@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <!-- 🌟 삼성 인터넷 및 모바일 브라우저 강제 다크모드 변환 방지 메타태그 추가 -->
+  <meta name="color-scheme" content="dark only">
+  <meta name="supported-color-schemes" content="dark">
   <title>너울 - 당신에게 도착한 나비</title>
 
   <!-- 파비콘 (브라우저 탭 아이콘) 설정 -->
@@ -103,6 +106,33 @@
       font-weight: 600;
       text-align: right;
       word-break: keep-all;
+    }
+
+    /* 🌟 삼성 인터넷 & 모바일 브라우저 강제 다크모드(Force Dark) 완벽 방지 */
+    :root, html, body {
+      color-scheme: dark only !important;
+      forced-color-adjust: none !important;
+      -webkit-print-color-adjust: exact !important;
+    }
+
+    body {
+      background-color: #000000 !important;
+      background-image: linear-gradient(180deg, #000000 0%, #000000 100%);
+    }
+
+    footer a.bg-white {
+      background-color: #ffffff !important;
+      background-image: linear-gradient(180deg, #ffffff 0%, #ffffff 100%) !important;
+      color: #000000 !important;
+      -webkit-text-fill-color: #000000 !important;
+    }
+
+    img, canvas, svg {
+      forced-color-adjust: none !important;
+    }
+
+    canvas {
+      color-scheme: only light !important;
     }
   </style>
 </head>

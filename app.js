@@ -370,8 +370,9 @@ function playCompleteScreenSequence() {
   }
   if (!titleEl) return;
   
-  var rawName = userSelections.q7_name ? userSelections.q7_name.trim() : "나비";
-  typeWriterText(titleEl, "하늘로 '" + rawName + "'이(가)<br>너울 속으로 날아 올랐습니다.<br><br>지금, 스크린을 확인해 보세요.", function() {
+  var rawName = (userSelections.q7_name && userSelections.q7_name.trim()) ? userSelections.q7_name.trim() : "나비";
+  var safeName = escapeHtmlSafe(rawName);
+  typeWriterText(titleEl, "하늘로 '" + safeName + "'이(가)<br>너울 속으로 날아올랐습니다.<br><br>지금, 스크린을 확인해 보세요.", function() {
     if (btnNext) btnNext.innerHTML = "다음";
     if (nextGroup) {
       nextGroup.classList.remove('hidden');
@@ -406,6 +407,17 @@ function sanitizeShareString(str) {
     .replace(/(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF]/g, function(m) { return m.length > 1 ? m[0] : ''; })
     .replace(/\uFFFD/g, '')
     .trim();
+}
+
+// 🌟 HTML 특수문자(<, >, ", ')로 인해 타이핑 파서나 카드 DOM이 깨지는 현상을 방지하는 헬퍼
+function escapeHtmlSafe(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 // 🌟 iOS Safari 등에서 비동기 대기 후 navigator.share가 차단되었을 때 클립보드 복사로 안전하게 이어주는 헬퍼
@@ -809,6 +821,32 @@ function typeWriterText(targetElement, textWithHtml, onComplete) {
 function resetOpeningFlow() {
   clearTimeout(typeTimer); clearTimeout(openingDelayTimer);
   openingCurrentStep = 1;
+  currentStepIdx = 0;
+
+  // 🌟 새로운 나비 만들기 진입 시 이전 관람객의 설문 데이터 및 사진/커스텀 상태 완전 초기화
+  userSelections = { q1: [], q2: [], q1_custom: "", q2_custom: "", core_concern: "", concern_reason: "", q6_memo: "", q7_name: "" };
+  lastInjectedCustomKeyword = "";
+  if (typeof inputQ7Name !== 'undefined' && inputQ7Name) inputQ7Name.value = "";
+  if (typeof charCounter !== 'undefined' && charCounter) charCounter.innerText = "0/10";
+  if (typeof inputQ6Memo !== 'undefined' && inputQ6Memo) inputQ6Memo.value = "";
+  if (typeof memoCounter !== 'undefined' && memoCounter) memoCounter.innerText = "0/50";
+  if (typeof inputCustomKeyword !== 'undefined' && inputCustomKeyword) inputCustomKeyword.value = "";
+  if (typeof btnCustomKeywordClear !== 'undefined' && btnCustomKeywordClear) btnCustomKeywordClear.classList.add('hidden');
+  if (typeof inputConcernReason !== 'undefined' && inputConcernReason) inputConcernReason.value = "";
+  if (typeof concernReasonCounter !== 'undefined' && concernReasonCounter) concernReasonCounter.innerText = "0/100";
+
+  window.currentExtractedTexture = null;
+  currentExtractedTexture = null;
+  window.currentSelected3DPatternPath = null;
+  if (typeof currentSelected3DPatternPath !== 'undefined') currentSelected3DPatternPath = null;
+  if (typeof rawImage !== 'undefined') rawImage = new Image();
+  if (typeof selectedButterflyShape !== 'undefined') selectedButterflyShape = 'crescent';
+  if (typeof selectedAntennaType !== 'undefined') selectedAntennaType = 'ball';
+  if (typeof selectedPatternId !== 'undefined') selectedPatternId = 'crescent_none';
+  if (typeof selectedBodyColor !== 'undefined') selectedBodyColor = 'blur';
+  if (typeof currentBlurPx !== 'undefined') currentBlurPx = 0;
+  if (typeof isSymmetryEnabled !== 'undefined') isSymmetryEnabled = false;
+
   if (elOpeningCocoonGroup) { elOpeningCocoonGroup.classList.add('hidden'); }
   if (elOpeningStep3CocoonGroup) { elOpeningStep3CocoonGroup.classList.add('hidden'); }
   if (elOpeningText) elOpeningText.innerHTML = "";
@@ -928,7 +966,7 @@ function initPostConcernBridgeScreen() {
     butterflyImgGroup.style.display = 'flex';
   }
 
-  typeWriterText(textEl, "당신에 대해 잘 알게 됐어요.<br>이제 그 마음을 나비로 만들어볼게요.", function() {
+  typeWriterText(textEl, "당신에 대해 잘 알게 됐어요.<br>이제 그 마음을 나비로 만들어 볼게요.", function() {
     if (btnNext) btnNext.innerHTML = "다음";
     nextGroup.classList.remove('hidden');
     nextGroup.classList.add('visible');
@@ -1096,6 +1134,10 @@ function renderSurveyStep() {
     if (elField6) { elField6.classList.add('hidden'); elField6.classList.remove('flex'); }
     if (elField7) { elField7.classList.remove('hidden'); elField7.classList.add('flex'); }
     if (surveyCustomInputAnchor) { surveyCustomInputAnchor.classList.remove('custom-anchor-visible'); surveyCustomInputAnchor.classList.add('custom-anchor-hidden'); }
+    if (inputQ7Name) {
+      inputQ7Name.value = userSelections.q7_name || "";
+      if (charCounter) charCounter.innerText = (userSelections.q7_name ? userSelections.q7_name.length : 0) + '/10';
+    }
   } else if (currentStepIdx === 1) {
     removeInjectedCustomFromQ2();
     stopBubblePhysics(); typeWriterSurveyTitle(q.title);
@@ -1112,6 +1154,10 @@ function renderSurveyStep() {
     if (elField7) { elField7.classList.add('hidden'); elField7.classList.remove('flex'); }
     if (surveyCustomInputAnchor) { surveyCustomInputAnchor.classList.remove('custom-anchor-visible'); surveyCustomInputAnchor.classList.add('custom-anchor-hidden'); }
     if (elField6) { elField6.classList.remove('hidden'); elField6.classList.add('flex'); }
+    if (inputQ6Memo) {
+      inputQ6Memo.value = userSelections.q6_memo || "";
+      if (memoCounter) memoCounter.innerText = (userSelections.q6_memo ? userSelections.q6_memo.length : 0) + '/50';
+    }
 
     var memoBox = elField6 ? elField6.querySelector('.glass-input-card-v2') : null;
     var memoCounterWrap = memoCounter ? memoCounter.parentElement : null;
@@ -1128,15 +1174,19 @@ function updateChipStyle(chip, isSelected) {
   chip.classList.toggle('chip-selected', isSelected);
   chip.classList.toggle('chip-unselected', !isSelected);
   if (isSelected) {
-    chip.style.setProperty('background', '#ffffff', 'important');
+    chip.style.setProperty('background-color', '#ffffff', 'important');
+    chip.style.setProperty('background-image', 'linear-gradient(180deg, #ffffff 0%, #ffffff 100%)', 'important');
     chip.style.setProperty('border', 'none', 'important');
     chip.style.setProperty('color', '#000000', 'important');
+    chip.style.setProperty('-webkit-text-fill-color', '#000000', 'important');
     chip.style.setProperty('font-weight', '700', 'important');
     chip.style.setProperty('box-shadow', '0 0 18px 2px rgba(255, 255, 255, 0.5)', 'important');
   } else {
     chip.style.setProperty('background', 'rgba(255, 255, 255, 0.08)', 'important');
+    chip.style.setProperty('background-image', 'none', 'important');
     chip.style.setProperty('border', '1px solid rgba(255, 255, 255, 0.14)', 'important');
     chip.style.setProperty('color', '#a3a3a3', 'important');
+    chip.style.setProperty('-webkit-text-fill-color', '#a3a3a3', 'important');
     chip.style.setProperty('font-weight', '500', 'important');
     chip.style.setProperty('box-shadow', 'none', 'important');
   }
@@ -1215,7 +1265,7 @@ if (inputQ6Memo) {
 
 if (inputQ7Name) {
   inputQ7Name.oninput = function(e) {
-    userSelections.q7_name = e.target.value.trim();
+    userSelections.q7_name = e.target.value;
     if (charCounter) charCounter.innerText = e.target.value.length + '/10';
     validateSurveyStep();
   };
@@ -1250,8 +1300,17 @@ var elCoreConcernGrid = document.getElementById('core-concern-scroll-grid');
 var btnCoreConcernNext = document.getElementById('btn-core-concern-next');
 var btnCoreConcernPrev = document.getElementById('btn-core-concern-prev');
 
+var coreConcernIsMouseDown = false;
+var coreConcernStartXCoord = 0;
+var coreConcernScrollLeftVal = 0;
+
+window.addEventListener('mouseup', function() {
+  coreConcernIsMouseDown = false;
+});
+
 function initCoreConcernScreen() {
   clearTimeout(coreConcernTypeTimer);
+  coreConcernIsMouseDown = false;
   if (elCoreConcernTitleWrap) elCoreConcernTitleWrap.classList.remove('moved-to-top');
   if (elCoreConcernTitle) elCoreConcernTitle.innerHTML = "";
   if (elCoreConcernSubGuide) elCoreConcernSubGuide.style.opacity = '0';
@@ -1308,16 +1367,17 @@ function initCoreConcernScreen() {
       elCoreConcernContainer.scrollLeft = Math.max(0, (elCoreConcernContainer.scrollWidth - elCoreConcernContainer.clientWidth) / 2);
     }, 50);
 
-    var isDown = false, startXCoord = 0, scrollLeftVal = 0;
     elCoreConcernContainer.onmousedown = function(e) {
-      isDown = true; startXCoord = e.pageX - elCoreConcernContainer.offsetLeft; scrollLeftVal = elCoreConcernContainer.scrollLeft;
+      coreConcernIsMouseDown = true;
+      coreConcernStartXCoord = e.pageX - elCoreConcernContainer.offsetLeft;
+      coreConcernScrollLeftVal = elCoreConcernContainer.scrollLeft;
     };
-    elCoreConcernContainer.onmouseleave = function() { isDown = false; };
-    elCoreConcernContainer.onmouseup = function() { isDown = false; };
+    elCoreConcernContainer.onmouseleave = function() { coreConcernIsMouseDown = false; };
+    elCoreConcernContainer.onmouseup = function() { coreConcernIsMouseDown = false; };
     elCoreConcernContainer.onmousemove = function(e) {
-      if (!isDown) return;
+      if (!coreConcernIsMouseDown) return;
       e.preventDefault();
-      elCoreConcernContainer.scrollLeft = scrollLeftVal - ((e.pageX - elCoreConcernContainer.offsetLeft) - startXCoord) * 1.5;
+      elCoreConcernContainer.scrollLeft = coreConcernScrollLeftVal - ((e.pageX - elCoreConcernContainer.offsetLeft) - coreConcernStartXCoord) * 1.5;
     };
   }
 
@@ -1626,6 +1686,7 @@ function bindGalleryFilterDragScroll() {
   });
   bar.addEventListener('mouseleave', function() { isDown = false; });
   bar.addEventListener('mouseup', function() { isDown = false; });
+  window.addEventListener('mouseup', function() { isDown = false; });
   bar.addEventListener('mousemove', function(e) {
     if (!isDown) return;
     var x = e.pageX - bar.offsetLeft;
@@ -1727,6 +1788,8 @@ function renderFilteredGallery(searchQuery) {
     card.setAttribute('data-specimen-id', item.id);
     var rawName = item.name || "나비";
     var displayName = rawName.length > 10 ? rawName.slice(0, 10) + '...' : rawName;
+    var safeRawName = escapeHtmlSafe(rawName);
+    var safeDisplayName = escapeHtmlSafe(displayName);
 
     var clipId = 'specimen-wing-clip-' + item.id;
     var bodyMaskId = 'specimen-body-mask-' + item.id;
@@ -1789,7 +1852,7 @@ function renderFilteredGallery(searchQuery) {
         '</g>' +
         bodyAndAntElementSvg +
       '</svg></div>' +
-      '<div class="specimen-pill-label"><span class="label-text" title="' + rawName + '">' + displayName + '</span></div>';
+      '<div class="specimen-pill-label"><span class="label-text" title="' + safeRawName + '">' + safeDisplayName + '</span></div>';
 
     card.onclick = function(e) {
       e.stopPropagation();
@@ -1880,18 +1943,25 @@ async function initSpecimenGallery() {
   renderFilteredGallery("");
 }
 
+function closeSpecimenDetailModal() {
+  var modal = document.getElementById('specimen-detail-modal');
+  if (modal) modal.classList.add('hidden');
+  if (typeof stopModal3DScene === 'function') {
+    stopModal3DScene();
+  } else if (typeof modalAnimFrameId !== 'undefined' && modalAnimFrameId) {
+    cancelAnimationFrame(modalAnimFrameId);
+    modalAnimFrameId = null;
+  }
+}
+
 var btnCloseSpecimenModal = document.getElementById('btn-close-specimen-modal');
 if (btnCloseSpecimenModal) {
-  btnCloseSpecimenModal.onclick = function() {
-    var modal = document.getElementById('specimen-detail-modal');
-    if (modal) modal.classList.add('hidden');
-    if (typeof stopModal3DScene === 'function') {
-      stopModal3DScene();
-    } else if (typeof modalAnimFrameId !== 'undefined' && modalAnimFrameId) {
-      cancelAnimationFrame(modalAnimFrameId);
-      modalAnimFrameId = null;
-    }
-  };
+  btnCloseSpecimenModal.onclick = closeSpecimenDetailModal;
+}
+
+var specimenModalBackdrop = document.querySelector('#specimen-detail-modal .specimen-modal-backdrop');
+if (specimenModalBackdrop) {
+  specimenModalBackdrop.onclick = closeSpecimenDetailModal;
 }
 
 window.addEventListener('keydown', function(e) {
@@ -1915,6 +1985,14 @@ window.addEventListener('resize', function() {
   var activeScreen = document.querySelector('.screen.active');
   if (activeScreen && activeScreen.id === 'screen-survey' && currentStepIdx === 2) {
     resizeBubblePhysicsCanvas();
+  } else if (activeScreen && activeScreen.id === 'screen-survey-concern-top7') {
+    var top7Container = document.getElementById('top7-physics-container');
+    var top7Canvas = document.getElementById('top7-physics-canvas');
+    if (top7Container && top7Canvas) {
+      var rect = top7Container.getBoundingClientRect();
+      top7Canvas.width = rect.width || window.innerWidth;
+      top7Canvas.height = top7Container.clientHeight || rect.height || (window.innerHeight - 240);
+    }
   } else if (activeScreen && isCoverWaveAllowed(activeScreen.id)) {
     resizeCoverWaveCanvas();
   }

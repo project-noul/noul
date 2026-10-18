@@ -863,7 +863,8 @@ function openSpecimen3DModal(item, textureUrl) {
   if (nameEl) nameEl.innerText = cleanItemName;
   if (tagsEl) {
     var coreTag = item.core_concern || (item.tags && item.tags[item.tags.length - 1]);
-    tagsEl.innerHTML = coreTag ? '<span class="specimen-glass-pill bg-white text-black font-bold border-white" style="box-shadow: 0 0 12px rgba(255, 255, 255, 0.45);">#' + coreTag + '</span>' : '';
+    var safeCoreTag = coreTag ? String(coreTag).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;') : '';
+    tagsEl.innerHTML = safeCoreTag ? '<span class="specimen-glass-pill bg-white text-black font-bold border-white" style="box-shadow: 0 0 12px rgba(255, 255, 255, 0.45);">#' + safeCoreTag + '</span>' : '';
   }
   if (memoEl) memoEl.innerText = cleanItemMemo ? ('"' + cleanItemMemo + '"') : '"너의 찬란한 날갯짓을 응원해."';
   if (dateEl) dateEl.innerText = item.date || "2026. 10. 24";
@@ -1185,6 +1186,17 @@ function initTop7PhysicsScene(customKeywordList) {
     top7SpawnTimeouts.push(timer);
   });
 
+  // 🌟 모든 공이 화면 안으로 떨어진 직후 상단 천장 경계벽을 닫아 마우스/터치로 공을 위로 튕겨도 화면 밖으로 날아가지 않도록 보호
+  var ceilingTimer = setTimeout(function() {
+    if (!top7Engine) return;
+    var ceiling = Bodies.rectangle(width / 2, -wallThick / 2, width * 4, wallThick, {
+      isStatic: true, restitution: 0.3, friction: 0.25
+    });
+    top7Boundaries.push(ceiling);
+    Composite.add(top7Engine.world, ceiling);
+  }, spawnDataset.length * 140 + 1100);
+  top7SpawnTimeouts.push(ceilingTimer);
+
   var mouse = Mouse.create(canvas);
   var mouseConstraint = MouseConstraint.create(top7Engine, {
     mouse: mouse,
@@ -1233,7 +1245,15 @@ function initTop7PhysicsScene(customKeywordList) {
 
       ctx.beginPath();
       ctx.arc(0, 0, data.radius, 0, Math.PI * 2);
-      ctx.fillStyle = data.fill;
+      if (data.rank === 1) {
+        // 🌟 삼성 인터넷 강제 다크모드가 1위 흰색 공의 단색 채우기를 검게 반전시키지 못하도록 원형 그라데이션 적용
+        var ballGrad = ctx.createRadialGradient(0, 0, data.radius * 0.1, 0, 0, data.radius);
+        ballGrad.addColorStop(0, "#ffffff");
+        ballGrad.addColorStop(1, "#f4f4f6");
+        ctx.fillStyle = ballGrad;
+      } else {
+        ctx.fillStyle = data.fill;
+      }
       ctx.fill();
 
       if (data.rank === 1) {
@@ -1255,7 +1275,7 @@ function initTop7PhysicsScene(customKeywordList) {
       ctx.textBaseline = "middle";
 
       ctx.font = "bold " + titleFontSize + "px -apple-system, BlinkMacSystemFont, Pretendard, sans-serif";
-      ctx.fillStyle = data.textColor;
+      ctx.fillStyle = data.rank === 1 ? "#050505" : data.textColor;
       ctx.fillText(data.keyword, 0, -percentFontSize * 0.65);
 
       ctx.font = "500 " + percentFontSize + "px -apple-system, BlinkMacSystemFont, Pretendard, sans-serif";
@@ -1320,6 +1340,7 @@ function stopBubblePhysics() {
 var coverAnimId = null;
 var coverParticles = [];
 var silkRibbons = []; // 🌟 중간에 점/구슬이 맺히지 않는 매끄러운 연속 실크 너울 곡선 배열
+var tapRipples = [];  // 🌟 짧은 터치(탭) 시 피어나는 은은한 윤슬 물결 파동 & 별가루 배열
 var activeRibbon = null;
 var isCoverPointerDown = false;
 var pointerMoveListener = null, pointerDownListener = null, pointerUpListener = null;
@@ -1353,6 +1374,7 @@ function initCoverWaveCanvas() {
   }
 
   silkRibbons = [];
+  tapRipples = [];
   activeRibbon = null;
 
   function getCanvasPos(clientX, clientY) {
@@ -1364,10 +1386,38 @@ function initCoverWaveCanvas() {
     };
   }
 
+  // 🌟 짧은 터치(탭) 시 실크 선과 어우러지는 은은한 윤슬 물결 파동 및 미세 별가루 생성
+  function spawnTapRipple(x, y) {
+    var sparks = [];
+    var sparkCount = 6;
+    for (var s = 0; s < sparkCount; s++) {
+      var angle = (Math.PI * 2 * s) / sparkCount + (Math.random() - 0.5) * 0.5;
+      var speed = 0.45 + Math.random() * 0.75;
+      sparks.push({
+        x: x,
+        y: y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed - 0.18,
+        r: 1.0 + Math.random() * 1.1
+      });
+    }
+    tapRipples.push({
+      x: x,
+      y: y,
+      age: 0,
+      maxAge: 38,
+      maxRadius: 34,
+      sparks: sparks
+    });
+    if (tapRipples.length > 8) tapRipples.shift();
+  }
+
   function startRibbonAt(clientX, clientY) {
     var pos = getCanvasPos(clientX, clientY);
     if (!pos.valid) return;
     isCoverPointerDown = true;
+
+    spawnTapRipple(pos.x, pos.y);
 
     activeRibbon = {
       points: [
@@ -1540,6 +1590,63 @@ function initCoverWaveCanvas() {
     }
   }
 
+  // 🌟 짧은 터치(탭) 시 피어나는 윤슬 물결 파동 & 별가루 렌더러
+  function drawTapRipple(rp) {
+    var prog = rp.age / rp.maxAge;
+    if (prog >= 1) return;
+
+    var easeOut = 1 - Math.pow(1 - prog, 3);
+    var fade = Math.pow(1 - prog, 1.75);
+    var curRadius = 3 + rp.maxRadius * easeOut;
+
+    // 1. 중심의 부드러운 윤슬 빛무리
+    var glowR = curRadius * 1.15;
+    var radGrad = ctx.createRadialGradient(rp.x, rp.y, 0, rp.x, rp.y, glowR);
+    radGrad.addColorStop(0, 'rgba(255, 255, 255, ' + (0.24 * fade).toFixed(4) + ')');
+    radGrad.addColorStop(0.45, 'rgba(215, 235, 255, ' + (0.10 * fade).toFixed(4) + ')');
+    radGrad.addColorStop(1, 'rgba(205, 230, 255, 0)');
+    ctx.fillStyle = radGrad;
+    ctx.beginPath();
+    ctx.arc(rp.x, rp.y, glowR, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. 바깥으로 퍼져나가는 외곽 윤슬 링
+    ctx.beginPath();
+    ctx.arc(rp.x, rp.y, curRadius, 0, Math.PI * 2);
+    ctx.lineWidth = 1.6 * (1 - prog * 0.5);
+    ctx.strokeStyle = 'rgba(235, 246, 255, ' + (0.28 * fade).toFixed(4) + ')';
+    ctx.stroke();
+
+    // 3. 시차를 두고 따라오는 안쪽 2차 물결 링
+    if (prog > 0.14) {
+      var innerProg = (prog - 0.14) / 0.86;
+      var innerEase = 1 - Math.pow(1 - innerProg, 2.5);
+      var innerRadius = 2 + rp.maxRadius * 0.68 * innerEase;
+      ctx.beginPath();
+      ctx.arc(rp.x, rp.y, innerRadius, 0, Math.PI * 2);
+      ctx.lineWidth = 1.0 * (1 - innerProg * 0.5);
+      ctx.strokeStyle = 'rgba(205, 230, 255, ' + (0.18 * (1 - innerProg)).toFixed(4) + ')';
+      ctx.stroke();
+    }
+
+    // 4. 터치 지점에서 사방으로 잔잔하게 흩어지는 미세 별가루
+    for (var s = 0; s < rp.sparks.length; s++) {
+      var sp = rp.sparks[s];
+      sp.x += sp.vx;
+      sp.y += sp.vy;
+      sp.vx *= 0.95;
+      sp.vy *= 0.95;
+
+      var spAlpha = 0.42 * fade;
+      if (spAlpha > 0.01) {
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, sp.r * (0.4 + 0.6 * fade), 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, ' + spAlpha.toFixed(4) + ')';
+        ctx.fill();
+      }
+    }
+  }
+
   (function renderCover() {
     coverAnimId = requestAnimationFrame(renderCover);
     waveTime += 0.04;
@@ -1565,8 +1672,18 @@ function initCoverWaveCanvas() {
       ctx.fill();
     }
 
-    // 🌟 'lighter' 가산 혼합 모드로 중간 점 없이 매끄러운 연속 실크 선만 렌더링
+    // 🌟 'lighter' 가산 혼합 모드로 터치 윤슬 파동 및 연속 실크 선 렌더링
     ctx.globalCompositeOperation = 'lighter';
+
+    for (var tr = tapRipples.length - 1; tr >= 0; tr--) {
+      var rp = tapRipples[tr];
+      rp.age += 1;
+      if (rp.age >= rp.maxAge) {
+        tapRipples.splice(tr, 1);
+        continue;
+      }
+      drawTapRipple(rp);
+    }
 
     for (var r = silkRibbons.length - 1; r >= 0; r--) {
       var ribbon = silkRibbons[r];
@@ -1626,6 +1743,7 @@ function stopCoverWaveCanvas() {
     touchEndListener = null;
   }
   silkRibbons = [];
+  tapRipples = [];
   activeRibbon = null;
   var canvas = document.getElementById('cover-wave-canvas');
   if (canvas) {

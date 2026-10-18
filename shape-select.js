@@ -478,9 +478,16 @@ function executeReliableFastBlur(canvas, radius) {
 var rawImage = new Image();
 var alignCanvas = document.getElementById('align-canvas');
 var actx = alignCanvas ? alignCanvas.getContext('2d', { willReadFrequently: true }) : null;
-var imgX = 0, imgY = 0, imgScale = 1.0;
+var imgX = 0, imgY = 0, imgScale = 1.0, baseImgScale = 1.0;
 var isDragging = false, startX = 0, startY = 0, startPinchDist = 0, pinchStartScale = 1.0;
 var currentBlurPx = 0, isSymmetryEnabled = false;
+
+function clampImgScale(val) {
+  var ref = baseImgScale > 0 ? baseImgScale : 1.0;
+  var minS = ref * 0.2;
+  var maxS = ref * 8.0;
+  return Math.max(minS, Math.min(maxS, val));
+}
 
 var blurSlider = document.getElementById('blur-slider');
 var toggleSymmetryBtn = document.getElementById('toggle-symmetry-btn');
@@ -598,7 +605,8 @@ if (albumInput) {
 
 function initAlignUI() {
   if (!rawImage || !rawImage.width || !alignCanvas) return;
-  imgScale = alignCanvas.width / Math.min(rawImage.width, rawImage.height);
+  baseImgScale = alignCanvas.width / Math.min(rawImage.width, rawImage.height);
+  imgScale = baseImgScale;
   imgX = (alignCanvas.width - rawImage.width * imgScale) / 2;
   imgY = (alignCanvas.height - rawImage.height * imgScale) / 2;
   drawAlignCanvas();
@@ -651,7 +659,7 @@ if (interactiveFrame && alignCanvas) {
   window.addEventListener('mouseup', function() { isDragging = false; });
   interactiveFrame.addEventListener('wheel', function(e) {
     e.preventDefault();
-    imgScale *= (e.deltaY < 0 ? 1.06 : 0.94);
+    imgScale = clampImgScale(imgScale * (e.deltaY < 0 ? 1.06 : 0.94));
     drawAlignCanvas();
   }, { passive: false });
 
@@ -676,11 +684,26 @@ if (interactiveFrame && alignCanvas) {
       drawAlignCanvas();
     } else if (e.touches.length === 2 && startPinchDist > 0) {
       if (e.cancelable) e.preventDefault();
-      imgScale = pinchStartScale * (Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) / startPinchDist);
+      var nextScale = pinchStartScale * (Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY) / startPinchDist);
+      imgScale = clampImgScale(nextScale);
       drawAlignCanvas();
     }
   }, { passive: false });
-  window.addEventListener('touchend', function() { isDragging = false; startPinchDist = 0; });
+
+  function handleAlignTouchEnd(e) {
+    startPinchDist = 0;
+    if (e && e.touches && e.touches.length === 1 && alignCanvas) {
+      var rect = alignCanvas.getBoundingClientRect();
+      var sFactor = alignCanvas.width / rect.width;
+      isDragging = true;
+      startX = (e.touches[0].clientX - rect.left) * sFactor - imgX;
+      startY = (e.touches[0].clientY - rect.top) * sFactor - imgY;
+    } else {
+      isDragging = false;
+    }
+  }
+  window.addEventListener('touchend', handleAlignTouchEnd);
+  window.addEventListener('touchcancel', handleAlignTouchEnd);
 }
 
 function exportAlignedTexture() {
@@ -744,7 +767,11 @@ function exportAlignedTexture() {
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', preloadAllPatternThumbnails);
+  document.addEventListener('DOMContentLoaded', function() {
+    preloadAllPatternThumbnails();
+    drawAlignCanvas();
+  });
 } else {
   preloadAllPatternThumbnails();
+  drawAlignCanvas();
 }

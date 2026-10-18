@@ -775,7 +775,8 @@ html, body {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 9999px;
-  backdrop-blur: 10px;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   gap: 3px;
 }
 .deco-pill-btn {
@@ -2026,4 +2027,81 @@ html, body {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* ==========================================================================
+   🌟 삼성 인터넷 & 모바일 브라우저 강제 다크모드(Force Dark) 완벽 방지
+   ========================================================================== */
+:root, html, body {
+  color-scheme: dark only !important;
+  forced-color-adjust: none !important;
+  -webkit-print-color-adjust: exact !important;
+}
+
+/* 1. 흰색 버튼 및 활성화된 탭/칩/배지가 다크모드에서 검게 반전되지 않도록 그라데이션 배경으로 보호 */
+#btn-start-cover,
+#btn-confirm-shape,
+#btn-action-share,
+#cinematic-white-flash,
+label[for="camera-input"],
+.opening-action-btn,
+.opening-pill-btn:active,
+.btn-next-action:not(:disabled),
+.deco-pill-btn.active-tab,
+.shape-thumb-btn.active,
+.gallery-filter-chip.active-chip,
+.specimen-pill-label.active-touched,
+.specimen-glass-pill.bg-white,
+.chip-selected,
+.minimal-pill-toggle.toggle-active,
+.body-color-btn[data-body-color="white"] {
+  background-color: #ffffff !important;
+  background-image: linear-gradient(180deg, #ffffff 0%, #ffffff 100%) !important;
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+/* 2. 흰색 배경 내부의 검은색 텍스트, 토글 노브, 나비 SVG 아이콘, 무늬 썸네일이 흰색으로 반전되는 현상 방지 */
+.specimen-pill-label.active-touched .label-text {
+  color: #000000 !important;
+  -webkit-text-fill-color: #000000 !important;
+}
+
+.shape-thumb-btn.active svg {
+  color-scheme: only light !important;
+  forced-color-adjust: none !important;
+  fill: #050505 !important;
+  stroke: #050505 !important;
+}
+
+.shape-thumb-btn.active img.pattern-thumb-img {
+  color-scheme: only light !important;
+  forced-color-adjust: none !important;
+  filter: invert(0) brightness(0.1) !important;
+}
+
+.minimal-pill-toggle.toggle-active .toggle-knob {
+  background-color: #000000 !important;
+  background-image: linear-gradient(180deg, #000000 0%, #000000 100%) !important;
+}
+
+/* 3. 순수 검은색 배경이 다크모드에서 회색으로 들뜨는 현상 방지 */
+html, body, .app-viewport, .screen, #screen-preview, .gallery-viewport-drag {
+  background-color: #000000 !important;
+  background-image: linear-gradient(180deg, #000000 0%, #000000 100%);
+}
+
+/* 표지 및 메뉴 화면은 뒤쪽 파티클 캔버스가 보여야 하므로 투명 유지 */
+#screen-cover, #screen-menu {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* 4. 이미지, 캔버스, SVG 아이콘의 임의 색상 왜곡 방지 */
+img, canvas, svg {
+  forced-color-adjust: none !important;
+}
+
+canvas {
+  color-scheme: only light !important;
 }
