@@ -1835,10 +1835,10 @@ function renderFilteredGallery(searchQuery) {
     var breatheDelay = ((itemIdx * 0.43) % 3.2).toFixed(2);
     var breatheDur = (3.1 + ((itemIdx * 0.29) % 0.9)).toFixed(2);
 
-    // 🌟 나비 SVG 크기를 기존(172x145)에서 210x178로 확대
+    // 🌟 나비 둘러보기 2D 나비 SVG 크기를 기존(210x178)에서 260x220으로 한층 더 확대
     card.innerHTML = 
       '<div class="specimen-butterfly-wrap"><div class="specimen-pin-head"></div>' +
-      '<svg class="specimen-shadow-drop" width="210" height="178" viewBox="0 0 ' + wing.w + ' ' + wing.h + '" style="overflow: visible; animation-delay: -' + breatheDelay + 's; animation-duration: ' + breatheDur + 's;">' +
+      '<svg class="specimen-shadow-drop" width="260" height="220" viewBox="0 0 ' + wing.w + ' ' + wing.h + '" style="overflow: visible; animation-delay: -' + breatheDelay + 's; animation-duration: ' + breatheDur + 's;">' +
         '<defs>' +
           '<clipPath id="' + clipId + '">' +
             '<path d="' + wingPath + '" fill-rule="nonzero"/>' +

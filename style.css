@@ -1468,24 +1468,24 @@ html, body {
   transform: translate(4px, 58px);
 }
 
-/* 🌟 나비 크기를 기존(172x145)보다 큼직하게(210x178) 확대 + 스크롤 미세 바람 반응 */
+/* 🌟 나비 크기를 기존(210x178, 48vw)보다 한층 더 큼직하게(250x210, 56vw) 확대 + 스크롤 미세 바람 반응 */
 .specimen-butterfly-wrap {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 210px;
-  max-width: 48vw;
-  height: 178px;
+  width: 250px;
+  max-width: 56vw;
+  height: 210px;
   transform: translateY(var(--scroll-shift, 0px)) rotateX(var(--scroll-tilt, 0deg));
   transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
   will-change: transform;
 }
 
-/* 🌟 GPU 가속(scaleX)만 사용하여 렉 없이 가만히 앉아 숨 쉬는 나비 날개 */
+/* 🌟 GPU 가속(scale)을 사용하여 SVG 내부 여백을 넘어 나비 자체를 1.22배 더 크게 키우면서 숨 쉬는 연출 */
 @keyframes specimenWingBreathe {
-  0%   { transform: scaleX(1) translateY(0px); }
-  100% { transform: scaleX(0.91) translateY(-2.5px); }
+  0%   { transform: scale(1.22, 1.22) translateY(0px); }
+  100% { transform: scale(1.11, 1.22) translateY(-2.5px); }
 }
 
 .specimen-shadow-drop {
