@@ -764,10 +764,8 @@ function bindAppNavEvents() {
     ['btn-gallery-back', function() { transitionToScreenWithFade('screen-menu'); }],
     ['menu-btn-intro', function() { transitionToScreenWithFade('screen-intro'); }],
     ['btn-intro-back', function() { showScreen('screen-menu'); }],
-    ['btn-intro-bottom-back', function() { showScreen('screen-menu'); }],
     ['menu-btn-guide', function() { transitionToScreenWithFade('screen-guide'); }],
-    ['btn-guide-back', function() { showScreen('screen-menu'); }],
-    ['btn-guide-bottom-back', function() { showScreen('screen-menu'); }]
+    ['btn-guide-back', function() { showScreen('screen-menu'); }]
   ];
   binds.forEach(function(item) {
     var el = document.getElementById(item[0]);
