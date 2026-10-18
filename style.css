@@ -1641,8 +1641,8 @@ html, body {
 
 .specimen-modal-stage {
   width: 100%;
-  height: 300px;
-  max-height: 45vh;
+  height: 335px;
+  max-height: 50vh;
   position: relative;
   background: radial-gradient(circle at 50% 60%, rgba(255, 255, 255, 0.09) 0%, rgba(0, 0, 0, 0) 70%);
   flex-shrink: 0;
@@ -1695,15 +1695,16 @@ html, body {
   color: #a3a3a3;
   display: block;
   text-align: center;
+  margin-top: 8px;
 }
 
 .specimen-modal-archive-box {
   width: 100%;
-  padding: 0.85rem 1.4rem 1.75rem;
+  padding: 1.35rem 1.4rem 1.75rem;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 1.05rem;
+  gap: 1.2rem;
 }
 
 .specimen-tags-scroll-wrap {
@@ -1713,6 +1714,7 @@ html, body {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
   padding: 0 4px;
+  margin-top: 4px;
 }
 .specimen-tags-scroll-wrap::-webkit-scrollbar {
   width: 3px;
@@ -1938,4 +1940,102 @@ html, body {
   transform: scale(1.15);
   border: 2px solid #ffffff;
   box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.85), 0 0 12px rgba(255, 255, 255, 0.75);
+}
+
+/* ==========================================================================
+   🌟 전시 소개(#screen-intro) 시안 1: 시네마틱 오로라 & 시차(Stagger) 등장 연출
+   ========================================================================== */
+
+/* 1. 심연의 오로라 배경 레이어 (GPU 가속 transform, opacity만 사용하여 렉 방지) */
+.intro-cinematic-glow {
+  position: absolute;
+  inset: -20px;
+  background-image:
+    radial-gradient(ellipse at 50% 18%, rgba(165, 205, 255, 0.22) 0%, rgba(110, 145, 255, 0.08) 42%, rgba(0, 0, 0, 0) 75%),
+    radial-gradient(circle at 50% 75%, rgba(255, 255, 255, 0.07) 0%, rgba(0, 0, 0, 0) 65%),
+    url('image/cover-bg.png');
+  background-size: 100% 100%, 100% 100%, cover;
+  background-position: center top, center bottom, center center;
+  background-repeat: no-repeat;
+  filter: blur(14px);
+  opacity: 0;
+  transform: scale(1.06);
+  pointer-events: none;
+  z-index: 0;
+  will-change: transform, opacity;
+}
+
+#screen-intro.active .intro-cinematic-glow {
+  animation: introAuroraBreathe 8s ease-in-out infinite alternate;
+}
+
+@keyframes introAuroraBreathe {
+  0% {
+    opacity: 0.34;
+    transform: scale(1.05) translateY(0px);
+  }
+  100% {
+    opacity: 0.56;
+    transform: scale(1.12) translateY(-8px);
+  }
+}
+
+/* 2. 상단 로고 헤일로(Halo) 광채 연출 */
+.intro-logo-wrap {
+  position: relative;
+}
+
+.intro-logo-wrap::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 220px;
+  height: 110px;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(ellipse at center, rgba(255, 255, 255, 0.22) 0%, rgba(185, 215, 255, 0.08) 48%, rgba(0, 0, 0, 0) 75%);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* 3. 로고 아래 수직 빛줄기 & 중앙 광선 디바이더 */
+.intro-vertical-divider {
+  position: relative;
+  width: 1px;
+  height: 44px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85) 0%, rgba(200, 225, 255, 0.28) 65%, rgba(255, 255, 255, 0) 100%);
+  box-shadow: 0 0 12px rgba(255, 255, 255, 0.5);
+}
+
+.intro-vertical-divider::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140px;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.38) 50%, rgba(255, 255, 255, 0) 100%);
+}
+
+/* 4. 문단별 시차(Stagger) 페이드인 애니메이션 */
+.intro-stagger-item {
+  opacity: 0;
+  transform: translateY(18px);
+  will-change: transform, opacity;
+}
+
+#screen-intro.active .intro-stagger-item {
+  animation: introStaggerRise 0.85s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes introStaggerRise {
+  0% {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

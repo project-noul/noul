@@ -576,7 +576,7 @@
               }
             }
           });
-          model.scale.set(0.95, 0.95, 0.95);
+          model.scale.set(1.25, 1.25, 1.25);
           model.position.set(0, 0, 0);
           group.add(model);
         },
@@ -661,7 +661,7 @@
     function animate() {
       requestAnimationFrame(animate);
       const t = clock.getElapsedTime();
-      const flap = 0.524 + Math.sin(t * 8.0) * 0.873;
+      const flap = 0.30 + Math.sin(t * 2.8) * 0.65;
 
       if (!isUserDragging) {
         butterflyRotX += (DEFAULT_ROT_X - butterflyRotX) * 0.05;

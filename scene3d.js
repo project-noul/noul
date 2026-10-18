@@ -326,7 +326,7 @@ function initShare3DScene() {
   (function animateShare() {
     if (!shareRenderer || !shareScene || !shareCamera) return;
     shareAnimFrameId = requestAnimationFrame(animateShare);
-    var t = clock.getElapsedTime(), flap = 0.524 + Math.sin(t * 8.5) * 0.873;
+    var t = clock.getElapsedTime(), flap = 0.30 + Math.sin(t * 2.8) * 0.65;
     if (shareWingL && shareWingR) { 
       var uL = shareWingL.userData;
       var uR = shareWingR.userData;
@@ -860,7 +860,7 @@ function openSpecimen3DModal(item, textureUrl) {
   var cleanItemName = sanitizeSpecimenShareText(item.name) || "나비";
   var cleanItemMemo = sanitizeSpecimenShareText(item.memo || item.q6_memo);
 
-  if (nameEl) nameEl.innerText = '‘' + cleanItemName + '’';
+  if (nameEl) nameEl.innerText = cleanItemName;
   if (tagsEl) {
     var coreTag = item.core_concern || (item.tags && item.tags[item.tags.length - 1]);
     tagsEl.innerHTML = coreTag ? '<span class="specimen-glass-pill bg-white text-black font-bold border-white" style="box-shadow: 0 0 12px rgba(255, 255, 255, 0.45);">#' + coreTag + '</span>' : '';
@@ -894,7 +894,7 @@ function openSpecimen3DModal(item, textureUrl) {
             '&body=' + encodeURIComponent(itemBodyColor);
         }
 
-        var shareData = { text: "내가 빚은 나비 '" + rawName + "'이(가) 도착했습니다.", url: shareCardUrl };
+        var shareData = { text: "당신에게 '" + rawName + "'이(가) 도착했습니다.", url: shareCardUrl };
         if (typeof triggerShareOrCopyFallback === 'function') {
           triggerShareOrCopyFallback(shareData, shareCardUrl);
         } else if (navigator.share) {
@@ -964,7 +964,7 @@ function openSpecimen3DModal(item, textureUrl) {
   modalGroup.position.set(0, -0.35, 0);
 
   var currentModalGroup = modalGroup;
-  loadButterflyModel(currentModalGroup, item.wingId, cleanAntId, wingMats, bodyMat, 1.15, function(l, r) {
+  loadButterflyModel(currentModalGroup, item.wingId, cleanAntId, wingMats, bodyMat, 0.95, function(l, r) {
     if (modalGroup !== currentModalGroup) return;
     modalWingL = l; modalWingR = r;
   });

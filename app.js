@@ -61,6 +61,7 @@ var auxTimers = [];
 
 var lastSavedButterflyId = null;
 var currentSavePromise = null;
+var hasSeenCaptureGuideAnimation = false;
 
 function registerAuxTimer(fn, delay) {
   var tid = setTimeout(fn, delay);
@@ -202,6 +203,7 @@ function showScreen(screenId) {
       } else if (screenId === 'screen-opening') {
         lastSavedButterflyId = null;
         currentSavePromise = null;
+        hasSeenCaptureGuideAnimation = false;
         stopBubblePhysics(); stopLoading3DScene(); stopShare3DScene(); stopTop7PhysicsScene(); resetOpeningFlow();
       } else if (screenId === 'screen-survey') {
         stopLoading3DScene(); stopShare3DScene(); stopTop7PhysicsScene(); renderSurveyStep();
@@ -458,7 +460,7 @@ if (btnActionShare) {
           '&antenna=' + encodeURIComponent(encodedAntenna) +
           '&body=' + encodeURIComponent(rawBodyColor);
       }
-      var shareData = { text: "내가 빚은 나비 '" + rawName + "'이(가) 도착했습니다.", url: shareCardUrl };
+      var shareData = { text: "당신에게 '" + rawName + "'이(가) 도착했습니다.", url: shareCardUrl };
       triggerShareOrCopyFallback(shareData, shareCardUrl);
     }
 
@@ -968,12 +970,23 @@ var guideBottomDock = document.getElementById('guide-bottom-dock');
 
 function startCaptureGuideCinematicFlow() {
   clearTimeout(guideTypeTimer);
+  var introMessage = "고치에서 깨어날 당신의 나비는<br>어떤 모습인가요?";
+
+  // 🌟 이미 한 번 연출을 본 뒤 '다시 촬영' 등으로 돌아온 경우 애니메이션 없이 즉시 전체 페이지 표시
+  if (hasSeenCaptureGuideAnimation) {
+    if (guideAnimatedTitle) guideAnimatedTitle.innerHTML = introMessage;
+    if (guideTitleWrap) guideTitleWrap.classList.add('moved-to-top');
+    if (guideCenterCard) guideCenterCard.classList.add('revealed');
+    if (guideBottomDock) guideBottomDock.classList.add('revealed');
+    return;
+  }
+
+  hasSeenCaptureGuideAnimation = true;
   if (guideTitleWrap) guideTitleWrap.classList.remove('moved-to-top');
   if (guideAnimatedTitle) guideAnimatedTitle.innerHTML = "";
   if (guideCenterCard) guideCenterCard.classList.remove('revealed');
   if (guideBottomDock) guideBottomDock.classList.remove('revealed');
 
-  var introMessage = "고치에서 깨어날 당신의 나비는<br>어떤 모습인가요?";
   var tokens = introMessage.match(/(<[^>]+>|[^<])/g) || [];
   var idx = 0, curText = "";
 
