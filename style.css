@@ -1271,15 +1271,15 @@ html, body {
   will-change: width, height, transform;
 }
 
-/* 🌟 2. 로딩 화면(screen-loading) 3D 나비: 무거운 drop-shadow 제거 후 부드러운 블러만 유지 */
+/* 🌟 2. 로딩 화면(screen-loading) 시안 2: 3D 나비 캔버스 자체는 선명하게 두고, 위쪽 안개 오버레이의 opacity만 조절하여 렉 없이 안개가 걷히도록 구성 */
 .loading-three-canvas-layer {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   z-index: 2;
-  filter: blur(8px) brightness(1.25);
-  transform: scale(1.08);
+  filter: none !important;
+  transform: none;
   pointer-events: none;
 }
 
@@ -1289,7 +1289,11 @@ html, body {
   width: 100%;
   height: 100%;
   z-index: 3;
-  background: radial-gradient(circle at center, rgba(0, 0, 0, 0.1) 0%, rgba(0, 0, 0, 0.75) 85%);
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.06) 0%, rgba(0, 0, 0, 0.45) 55%, rgba(0, 0, 0, 0.88) 90%);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  opacity: 1;
+  will-change: opacity;
   pointer-events: none;
 }
 
@@ -1444,6 +1448,7 @@ html, body {
   box-sizing: border-box;
 }
 
+/* 🌟 전시 중 나비 개수가 많아져도 화면 밖 나비의 렌더링 연산을 건너뛰어 렉을 방지하는 content-visibility 적용 */
 .specimen-card-item {
   position: relative;
   display: flex;
@@ -1455,6 +1460,8 @@ html, body {
   opacity: 0;
   transform: translateY(16px);
   transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  content-visibility: auto;
+  contain-intrinsic-size: 250px 260px;
 }
 
 /* 🌟 홀수/짝수 나비 카드를 훨씬 더 엇갈리게(지그재그) 배치하여 자유롭게 날아다니는 군집 느낌 강조 */
@@ -1479,7 +1486,6 @@ html, body {
   height: 210px;
   transform: translateY(var(--scroll-shift, 0px)) rotateX(var(--scroll-tilt, 0deg));
   transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform;
 }
 
 /* 🌟 GPU 가속(scale)을 사용하여 SVG 내부 여백을 넘어 나비 자체를 1.22배 더 크게 키우면서 숨 쉬는 연출 */
@@ -1497,20 +1503,12 @@ html, body {
   will-change: transform;
 }
 
+/* 🌟 나비 몸통 가운데 흰색 점 완전 숨김 처리 */
 .specimen-pin-head {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #ffffff;
-  box-shadow: none !important;
-  z-index: 5;
-  pointer-events: none;
+  display: none !important;
 }
 
+/* 🌟 다수의 카드 스크롤 시 GPU 병목을 일으키는 개별 backdrop-filter를 제거하고 동일한 색감의 반투명 배경 적용 */
 .specimen-pill-label {
   margin-top: 8px;
   border-radius: 9999px;
@@ -1522,10 +1520,8 @@ html, body {
   max-width: 130px;
   z-index: 20;
   pointer-events: none;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(28, 28, 32, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
   box-shadow: none !important;
   transition: background-color 0.25s ease, border-color 0.25s ease;
 }

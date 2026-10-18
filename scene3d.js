@@ -169,9 +169,14 @@ var loadingAnimFrameId = null;
 
 function initLoading3DScene() {
   stopLoading3DScene();
-  var res = setupCommon3DScene(document.getElementById('loading-three-container'), 7.5, 0);
+  var res = setupCommon3DScene(document.getElementById('loading-three-container'), 9.6, 0);
   if (!res) return;
   loadingScene = res.scene; loadingCamera = res.camera; loadingRenderer = res.renderer;
+
+  var fogOverlay = document.querySelector('#screen-loading .loading-blur-vignette-overlay');
+  if (fogOverlay) {
+    fogOverlay.style.opacity = '1';
+  }
 
   var whiteMat = new THREE.MeshBasicMaterial({ 
     color: 0xffffff, 
@@ -179,8 +184,8 @@ function initLoading3DScene() {
   });
   
   loadingGroup = new THREE.Group();
-  loadingGroup.rotation.set(0.98, 2.45, -0.55);
-  loadingGroup.position.set(-0.08, -0.22, 0);
+  loadingGroup.rotation.set(1.12, 2.55, -0.62);
+  loadingGroup.position.set(-0.08, -0.35, 0);
 
   var currentGroup = loadingGroup;
   loadButterflyModel(currentGroup, selectedButterflyShape, selectedAntennaType, { matL: whiteMat, matR: whiteMat }, whiteMat, 0.45, function(l, r) {
@@ -190,20 +195,56 @@ function initLoading3DScene() {
   loadingScene.add(loadingGroup);
 
   var clock = new THREE.Clock();
+  var flapPhase = 0;
+  var lastTime = 0;
+
   (function animateLoading() {
     if (!loadingRenderer || !loadingScene || !loadingCamera) return;
     loadingAnimFrameId = requestAnimationFrame(animateLoading);
-    var t = clock.getElapsedTime(), flap = 0.524 + Math.sin(t * 8.5) * 0.873;
+    var t = clock.getElapsedTime();
+    var dt = Math.min(0.1, t - lastTime);
+    lastTime = t;
+
+    // 🌟 10초 동안 0.0 -> 1.0으로 진행되는 부화 진행률
+    var prog = Math.min(1.0, t / 10.0);
+    var smoothProg = prog * prog * (3.0 - 2.0 * prog);
+
+    // 🌟 1. 안개 걷힘 연출: 0~30% 구간에서는 짙은 안개를 유지하다가 30~95% 구간에서 서서히 걷혀 선명한 실루엣 노출 (opacity만 조절하여 렉 0%)
+    if (fogOverlay) {
+      var fogClearProg = Math.max(0.0, Math.min(1.0, (prog - 0.25) / 0.70));
+      var fogAlpha = 1.0 - (fogClearProg * fogClearProg * 0.92);
+      fogOverlay.style.opacity = fogAlpha.toFixed(3);
+    }
+
+    // 🌟 2. 카메라 줌인(Zoom-in): 멀리(9.6) 있던 시점이 진행률에 따라 나비 눈앞(5.7)까지 부드럽게 다가감
+    loadingCamera.position.z = 9.6 - (3.9 * smoothProg);
+
+    // 🌟 3. 실루엣 각성 날갯짓: 처음에는 느리고 작게 숨 쉬듯 움직이다가 후반부로 갈수록 힘차고 넓게 날갯짓
+    var currentFlapSpeed = 3.8 + (7.2 * smoothProg);
+    flapPhase += dt * currentFlapSpeed;
+    var currentFlapAmp = 0.42 + (0.48 * smoothProg);
+    var flap = (0.48 - 0.12 * smoothProg) + Math.sin(flapPhase) * currentFlapAmp;
+
     if (loadingWingL && loadingWingR) { 
       var uL = loadingWingL.userData;
       var uR = loadingWingR.userData;
       loadingWingL.rotation.set(uL.baseRotX || 0, (uL.baseRotY || 0) + flap, uL.baseRotZ || 0); 
       loadingWingR.rotation.set(uR.baseRotX || 0, (uR.baseRotY || 0) - flap, uR.baseRotZ || 0); 
     }
+
+    // 🌟 4. 자세 각성: 웅크리고 기울어져 있던 각도에서 점차 중심을 잡고 우아하게 떠오름
     if (loadingGroup) {
-      loadingGroup.position.x = -0.08;
-      loadingGroup.position.y = -0.22 + Math.sin(t * 2.2) * 0.08;
-      loadingGroup.rotation.z = -0.55 + Math.sin(t * 1.5) * 0.04;
+      var baseX = -0.08 * (1.0 - smoothProg * 0.85);
+      var baseY = -0.35 + (0.28 * smoothProg);
+      var baseRotX = 1.12 - (0.34 * smoothProg);
+      var baseRotY = 2.55 + (0.52 * smoothProg);
+      var baseRotZ = -0.62 + (0.42 * smoothProg);
+
+      loadingGroup.position.x = baseX;
+      loadingGroup.position.y = baseY + Math.sin(t * 2.2) * 0.07;
+      loadingGroup.rotation.x = baseRotX;
+      loadingGroup.rotation.y = baseRotY;
+      loadingGroup.rotation.z = baseRotZ + Math.sin(t * 1.5) * 0.04;
     }
     loadingRenderer.render(loadingScene, loadingCamera);
   })();
@@ -222,6 +263,10 @@ function stopLoading3DScene() {
   loadingWingR = null;
   var c = document.getElementById('loading-three-container');
   if (c) c.innerHTML = '';
+  var fogOverlay = document.querySelector('#screen-loading .loading-blur-vignette-overlay');
+  if (fogOverlay) {
+    fogOverlay.style.opacity = '1';
+  }
 }
 
 function createWingMaterials(textureURL, patternPath3D) {

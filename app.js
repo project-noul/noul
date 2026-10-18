@@ -1664,6 +1664,40 @@ var specimenContainer = document.getElementById('specimen-items-container');
 var gallerySpawnTimers = [];
 var currentGalleryConcernFilter = 'all';
 
+// 🌟 [렉 제거 핵심]: 실시간 SVG <feGaussianBlur> 필터 및 <mask> 연산을 대체하기 위해, 각 나비의 블러 몸통 이미지를 1회만 구워서 재사용하는 캐시
+var specimenBlurredBodyTexCache = {};
+
+function prepareSpecimenBlurredBodyTex(itemId, texUrl, onReady) {
+  if (!texUrl) return;
+  if (specimenBlurredBodyTexCache[itemId]) {
+    onReady(specimenBlurredBodyTexCache[itemId]);
+    return;
+  }
+  var img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = function() {
+    try {
+      var c = document.createElement('canvas');
+      c.width = 64;
+      c.height = 64;
+      var ctx = c.getContext('2d', { willReadFrequently: true });
+      ctx.fillStyle = '#d4d4d8';
+      ctx.fillRect(0, 0, 64, 64);
+      ctx.drawImage(img, 0, 0, 64, 64);
+      if (typeof executeReliableFastBlur === 'function') {
+        executeReliableFastBlur(c, 3);
+      }
+      var blurredUrl = c.toDataURL('image/jpeg', 0.75);
+      specimenBlurredBodyTexCache[itemId] = blurredUrl;
+      onReady(blurredUrl);
+    } catch (e) {
+      specimenBlurredBodyTexCache[itemId] = texUrl;
+      onReady(texUrl);
+    }
+  };
+  img.src = texUrl;
+}
+
 function getPatternObjectForSpecimen(wingId, patternId) {
   if (typeof wingPatternDataset === 'undefined') return null;
   var patterns = wingPatternDataset[wingId] || wingPatternDataset['crescent'] || [];
@@ -1771,7 +1805,9 @@ function renderFilteredGallery(searchQuery) {
     return;
   }
 
+  var fragment = document.createDocumentFragment();
   var cardElements = [];
+
   filteredData.forEach(function(item, itemIdx) {
     var parsedAnt = String(item.antId || 'ball').split('__');
     var cleanAntId = parsedAnt[0] || 'ball';
@@ -1792,8 +1828,8 @@ function renderFilteredGallery(searchQuery) {
     var safeDisplayName = escapeHtmlSafe(displayName);
 
     var clipId = 'specimen-wing-clip-' + item.id;
-    var bodyMaskId = 'specimen-body-mask-' + item.id;
-    var bodyBlurId = 'specimen-body-blur-' + item.id;
+    var bodyClipId = 'specimen-body-clip-' + item.id;
+    var bodyImgDomId = 'specimen-body-img-' + item.id;
     var wingPath = wing.wingD || wing.d;
     var bodyPath = wing.bodyD || "";
 
@@ -1813,18 +1849,25 @@ function renderFilteredGallery(searchQuery) {
         (bodyPath ? '<path d="' + bodyPath + '" fill="#000000"/>' : '') +
         (ant ? '<g transform="translate(' + wing.headX + ',' + wing.headY + ')" color="#000000">' + ant.render(10.5) + '</g>' : '');
     } else if (itemBodyColor === 'blur') {
+      // 🌟 실시간 <feGaussianBlur> 필터와 <mask> 대신 가벼운 <clipPath> + 사전 블러 캐시 텍스처를 사용하여 외형은 100% 유지하면서 렌더링 렉 완벽 제거
+      var cachedBlurTex = specimenBlurredBodyTexCache[item.id] || tex;
       extraBodyDefs =
-        '<mask id="' + bodyMaskId + '" maskUnits="userSpaceOnUse" x="-200" y="-200" width="1400" height="1400">' +
-          '<rect x="-200" y="-200" width="1400" height="1400" fill="black"/>' +
-          (bodyPath ? '<path d="' + bodyPath + '" fill="white" fill-rule="nonzero"/>' : '') +
-          (ant ? '<g transform="translate(' + wing.headX + ',' + wing.headY + ')" color="#ffffff">' + ant.render(10.5) + '</g>' : '') +
-        '</mask>' +
-        '<filter id="' + bodyBlurId + '" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="18"/></filter>';
+        '<clipPath id="' + bodyClipId + '">' +
+          (bodyPath ? '<path d="' + bodyPath + '" fill-rule="nonzero"/>' : '') +
+        '</clipPath>';
       bodyAndAntElementSvg =
-        '<g mask="url(#' + bodyMaskId + ')">' +
+        (ant ? '<g transform="translate(' + wing.headX + ',' + wing.headY + ')" color="#e4e4e7">' + ant.render(10.5) + '</g>' : '') +
+        '<g clip-path="url(#' + bodyClipId + ')">' +
           '<rect x="0" y="0" width="' + wing.w + '" height="' + wing.h + '" fill="#d4d4d8"/>' +
-          '<image href="' + tex + '" x="0" y="0" width="' + wing.w + '" height="' + wing.h + '" preserveAspectRatio="none" filter="url(#' + bodyBlurId + ')"/>' +
+          '<image id="' + bodyImgDomId + '" href="' + cachedBlurTex + '" x="0" y="0" width="' + wing.w + '" height="' + wing.h + '" preserveAspectRatio="none"/>' +
         '</g>';
+
+      if (!specimenBlurredBodyTexCache[item.id]) {
+        prepareSpecimenBlurredBodyTex(item.id, tex, function(blurredDataUrl) {
+          var imgEl = document.getElementById(bodyImgDomId);
+          if (imgEl) imgEl.setAttribute('href', blurredDataUrl);
+        });
+      }
     } else {
       bodyAndAntElementSvg =
         (bodyPath ? '<path d="' + bodyPath + '" fill="#ffffff"/>' : '') +
@@ -1835,9 +1878,9 @@ function renderFilteredGallery(searchQuery) {
     var breatheDelay = ((itemIdx * 0.43) % 3.2).toFixed(2);
     var breatheDur = (3.1 + ((itemIdx * 0.29) % 0.9)).toFixed(2);
 
-    // 🌟 나비 둘러보기 2D 나비 SVG 크기를 기존(210x178)에서 260x220으로 한층 더 확대
+    // 🌟 나비 몸통 가운데 흰색 점(.specimen-pin-head) 완전 제거 및 260x220 크기 적용
     card.innerHTML = 
-      '<div class="specimen-butterfly-wrap"><div class="specimen-pin-head"></div>' +
+      '<div class="specimen-butterfly-wrap">' +
       '<svg class="specimen-shadow-drop" width="260" height="220" viewBox="0 0 ' + wing.w + ' ' + wing.h + '" style="overflow: visible; animation-delay: -' + breatheDelay + 's; animation-duration: ' + breatheDur + 's;">' +
         '<defs>' +
           '<clipPath id="' + clipId + '">' +
@@ -1863,18 +1906,21 @@ function renderFilteredGallery(searchQuery) {
         openSpecimen3DModal(item, item.textureUrl || createFallbackDummyTexture(defaultTexColor1, defaultTexColor2));
       }
     };
-    specimenContainer.appendChild(card);
+    fragment.appendChild(card);
     cardElements.push(card);
   });
 
+  specimenContainer.appendChild(fragment);
+
   cardElements.forEach(function(cardEl, idx) {
-    var timer = setTimeout(function() { if (cardEl) cardEl.classList.add('revealed'); }, idx * 60);
+    var timer = setTimeout(function() { if (cardEl) cardEl.classList.add('revealed'); }, Math.min(idx * 40, 480));
     gallerySpawnTimers.push(timer);
   });
 }
 
-// 🌟 스크롤 속도에 반응하여 나비들이 미세하게 흔들리는 초경량 바람(Scroll Tilt) 효과
+// 🌟 스크롤 속도에 반응하여 나비들이 미세하게 흔들리는 초경량 바람(Scroll Tilt) 효과 (requestAnimationFrame 쓰로틀링 적용으로 스크롤 렉 방지)
 var galleryScrollResetTimer = null;
+var galleryScrollRafId = null;
 function bindGalleryScrollWindEffect() {
   var viewport = document.getElementById('gallery-pan-viewport');
   var board = document.getElementById('gallery-specimen-board');
@@ -1883,21 +1929,25 @@ function bindGalleryScrollWindEffect() {
 
   var lastScrollTop = viewport.scrollTop;
   viewport.addEventListener('scroll', function() {
-    var curTop = viewport.scrollTop;
-    var delta = curTop - lastScrollTop;
-    lastScrollTop = curTop;
+    if (galleryScrollRafId) return;
+    galleryScrollRafId = requestAnimationFrame(function() {
+      galleryScrollRafId = null;
+      var curTop = viewport.scrollTop;
+      var delta = curTop - lastScrollTop;
+      lastScrollTop = curTop;
 
-    var tiltDeg = Math.max(-14, Math.min(14, delta * 0.45));
-    var shiftPx = Math.max(-5, Math.min(5, -delta * 0.16));
+      var tiltDeg = Math.max(-14, Math.min(14, delta * 0.45));
+      var shiftPx = Math.max(-5, Math.min(5, -delta * 0.16));
 
-    board.style.setProperty('--scroll-tilt', tiltDeg.toFixed(1) + 'deg');
-    board.style.setProperty('--scroll-shift', shiftPx.toFixed(1) + 'px');
+      board.style.setProperty('--scroll-tilt', tiltDeg.toFixed(1) + 'deg');
+      board.style.setProperty('--scroll-shift', shiftPx.toFixed(1) + 'px');
 
-    clearTimeout(galleryScrollResetTimer);
-    galleryScrollResetTimer = setTimeout(function() {
-      board.style.setProperty('--scroll-tilt', '0deg');
-      board.style.setProperty('--scroll-shift', '0px');
-    }, 120);
+      clearTimeout(galleryScrollResetTimer);
+      galleryScrollResetTimer = setTimeout(function() {
+        board.style.setProperty('--scroll-tilt', '0deg');
+        board.style.setProperty('--scroll-shift', '0px');
+      }, 120);
+    });
   }, { passive: true });
 }
 bindGalleryScrollWindEffect();
