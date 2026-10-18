@@ -1,6 +1,6 @@
 const clock = new THREE.Clock();
 const dummyObj = new THREE.Object3D(); 
-
+    
 const _vDir = new THREE.Vector3();
 const _vTargetPos = new THREE.Vector3();
 const _vOrbit = new THREE.Vector3();
@@ -14,7 +14,7 @@ let prevHandTarget3D = new THREE.Vector3(999, 999, 8.0);
 let isHandDetected = false;
 let lastHandResultTime = 0;
 let interactionMode = 'none';
-
+    
 let specialButterfly = null;
 let fistButterflies = []; 
 let isCreatingSpecialButterfly = false;
@@ -84,7 +84,7 @@ function resetHandCards() {
 
   if (floatingConcernCard) floatingConcernCard.classList.remove('visible');
   if (floatingConcernReason) floatingConcernReason.innerHTML = '';
-  
+      
   if (!activeCeremonyButterfly) {
     if (floatingInfoCard) {
       floatingInfoCard.classList.remove('visible');
@@ -144,7 +144,7 @@ function triggerCeremonyCardSequence(b) {
   typeWriterText(floatingMemo, fullMemo, 45, () => {
     ceremonyCardTimer = setTimeout(() => {
       if (floatingInfoCard) floatingInfoCard.classList.remove('visible');
-      
+          
       setTimeout(() => {
         if (b && b.isCeremony && b.ceremonyStage === 'resting') {
           b.ceremonyStage = 'flying_up';
@@ -251,9 +251,9 @@ function updateMotion(b, dt, time) {
       }
   } else {
       b.flapAmp += (1.0 - b.flapAmp) * 0.1; 
-      
-      const wingWave = Math.sin(phase * 0.9) * 0.7 + Math.sin(phase * 2.1) * 0.3;
-      const strokePower = Math.max(0, -wingWave);
+          
+      const wingWave = Math.sin(phase);
+      const strokePower = (wingWave < 0) ? Math.sin(-wingWave * Math.PI * 0.5) * 0.55 : 0;
       b.strokePower = strokePower;
 
       const wingFold = (0.40 + wingWave * 0.60) * b.flapAmp;
@@ -266,8 +266,8 @@ function updateMotion(b, dt, time) {
       b.innerGroup.rotation.z = Math.sin(phase) * 0.025 * b.flapAmp;
   }
 
-  const bobAmp = 0.18 * b.flapAmp;
-  const currentBobY = (Math.cos(phase) * 0.7 + Math.sin(time * 2.2 + b.seed) * 0.3) * bobAmp;
+  const bobAmp = 0.09 * b.flapAmp;
+  const currentBobY = Math.cos(phase) * bobAmp;
   const deltaBobY = currentBobY - (b.prevBobY || 0);
   b.prevBobY = currentBobY;
   b.group.position.y += deltaBobY;
@@ -395,7 +395,7 @@ function updateMotion(b, dt, time) {
               _vDir.z = 0; 
               _vDir.normalize().multiplyScalar(0.10);
               b.velocity.lerp(_vDir, 0.06); 
-              
+                  
               _vTargetPos.copy(b.group.position).add(b.velocity);
               dummyObj.position.copy(b.group.position);
               dummyObj.lookAt(_vTargetPos);
@@ -404,14 +404,14 @@ function updateMotion(b, dt, time) {
               b.group.quaternion.slerp(dummyObj.quaternion, 0.16);
           }
       }
-      
+          
       if (b.specialState === 'landed') {
           b.state = 'landing_rest';
           b.velocity.set(0, 0, 0);
           b.group.position.x += (handTarget3D.x - b.group.position.x) * 0.12;
           b.group.position.y += (handTarget3D.y - b.group.position.y) * 0.12;
           b.group.position.z = 8.0;
-          
+              
           dummyObj.position.copy(b.group.position);
           dummyObj.lookAt(camera.position); 
           dummyObj.rotateY(Math.PI / 2);
@@ -437,7 +437,7 @@ function updateMotion(b, dt, time) {
           _vDir.z += Math.cos(time * 3.8 + b.seed) * 0.05;
 
           b.velocity.lerp(_vDir, 0.05); 
-          
+              
           _vTargetPos.copy(b.group.position).add(b.velocity);
           dummyObj.position.copy(b.group.position);
           dummyObj.lookAt(_vTargetPos);
@@ -462,7 +462,7 @@ function updateMotion(b, dt, time) {
       if (interactionMode === 'fist_gather' && fistButterflies.includes(b.id)) {
           isFollowing = true;
           b.state = 'flying';
-          
+              
           const orbitIdx = fistButterflies.indexOf(b.id);
           const orbitRadius = 1.35 + (orbitIdx * 0.28) + Math.sin(time * 0.6 + b.seed) * 0.15;
 
@@ -482,9 +482,9 @@ function updateMotion(b, dt, time) {
             depthOffset
           );
           _vTargetPos.copy(handTarget3D).add(_vOrbit);
-          
+              
           const currentStroke = b.strokePower || 0;
-          const currentSpeed = (b.speedBase || 0.085) * (1.0 + currentStroke * 0.45);
+          const currentSpeed = (b.speedBase || 0.085) * (1.0 + currentStroke * 0.55);
 
           _vDir.subVectors(_vTargetPos, b.group.position).normalize().multiplyScalar(currentSpeed);
           b.velocity.lerp(_vDir, 0.06);
@@ -555,8 +555,8 @@ function updateMotion(b, dt, time) {
       b.depthAngle = Math.max(-0.45, Math.min(0.45, (b.depthAngle || 0) + b.turnRateDepth));
 
       const currentStroke = b.strokePower || 0;
-      const forwardSurge = 1.0 + (currentStroke * 0.45);
-      const currentSpeed = (b.speedBase || 0.080) * forwardSurge;
+      const forwardSurge = 1.0 + (currentStroke * 0.55);
+      const currentSpeed = b.speedBase * forwardSurge;
 
       const cosD = Math.cos(b.depthAngle);
       b.velocity.x = cosD * Math.cos(b.screenAngle) * currentSpeed;
@@ -578,7 +578,7 @@ function updateMotion(b, dt, time) {
   if (b.velocity.length() > maxSpeed) {
       b.velocity.multiplyScalar(0.92);
   }
-  
+      
   const timeFactor = dt * 60.0;
   _vStep.copy(b.velocity).multiplyScalar(timeFactor);
   b.group.position.add(_vStep);
@@ -603,9 +603,9 @@ function updateMotion(b, dt, time) {
 
     const turnBank = Math.max(-0.6, Math.min(0.6, -(b.turnRateAngle || 0) * 35.0));
     const wobbleRoll = Math.sin(time * 1.5 + b.seed * 2.5) * 0.12 + (b.rollBias || 0);
-    const strokeWobble = Math.sin(phase) * 0.09;
+    const strokeWobble = Math.sin(phase) * 0.04;
 
-    const rollAngle = Math.max(-0.85, Math.min(0.85, turnBank + wobbleRoll + strokeWobble));
+    const rollAngle = Math.max(-0.75, Math.min(0.75, turnBank + wobbleRoll + strokeWobble));
 
     dummyObj.rotateZ(rollAngle);
 
@@ -639,7 +639,7 @@ function animate() {
     handTarget3D.lerp(targetHandPos3D, 0.30);
     currentScreenX += (targetScreenX - currentScreenX) * 0.35;
     currentScreenY += (targetScreenY - currentScreenY) * 0.35;
-    
+        
     if (handPointer) {
       handPointer.style.transform = `translate3d(${currentScreenX - 26}px, ${currentScreenY - 26}px, 0)`;
     }
@@ -706,7 +706,7 @@ function animate() {
   for (let i = 0; i < userFlock.length; i++) updateMotion(userFlock[i], dt, time);
   if (specialButterfly) updateMotion(specialButterfly, dt, time);
   if (activeCeremonyButterfly) updateMotion(activeCeremonyButterfly, dt, time);
-  
+      
   prevHandTarget3D.copy(handTarget3D); 
   renderer.render(scene, camera);
 }
@@ -918,7 +918,7 @@ setTimeout(() => {
       });
 
       let scatterFrameCount = 0;
-      
+          
       hands.onResults((results) => {
         if (isAutoReloading) return;
         if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
@@ -951,7 +951,7 @@ setTimeout(() => {
           const isPinkyClosed  = distSq(lm[20], wrist) < distSq(lm[18], wrist) * 1.15;
 
           const otherClosedCount = (isMiddleClosed ? 1 : 0) + (isRingClosed ? 1 : 0) + (isPinkyClosed ? 1 : 0);
-          
+              
           const isPointGesture = isIndexOpen && (otherClosedCount >= 2);
           const isTrueScatter = isIndexOpen && !isMiddleClosed && !isRingClosed && !isPinkyClosed && !isPointGesture;
           const isTrueFist = !isIndexOpen && isMiddleClosed && isRingClosed && isPinkyClosed;

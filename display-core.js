@@ -888,7 +888,7 @@ function buildButterfly(data = {}, isUser = false, isDelayedArrival = false, isF
   let initialVelocity;
   let targetScale = data.customScale || (0.62 + Math.random() * 0.14);
 
-  const targetBPM = (targetScale < 0.35) ? (115 + Math.random() * 20) : 100;
+  const targetBPM = 100;
   const flapSpeed = (targetBPM / 60) * 2 * Math.PI * 2;
   const initialSpeed = 0.080 + Math.random() * 0.020;
 
