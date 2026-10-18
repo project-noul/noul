@@ -886,7 +886,7 @@ function buildButterfly(data = {}, isUser = false, isDelayedArrival = false, isF
   group.add(innerGroup);
 
   let initialVelocity;
-  let targetScale = data.customScale || (0.82 + Math.random() * 0.18);
+  let targetScale = data.customScale || (1.12 + Math.random() * 0.20);
 
   const targetBPM = 100;
   const flapSpeed = (targetBPM / 60) * 2 * Math.PI * 2;
@@ -898,15 +898,15 @@ function buildButterfly(data = {}, isUser = false, isDelayedArrival = false, isF
   if (isCeremony) {
     group.position.set(0, -7.5, 8.0);
     initialVelocity = new THREE.Vector3(0, 0.034, 0);
-    group.scale.set(0.65, 0.65, 0.65);
+    group.scale.set(0.75, 0.75, 0.75);
     group.rotation.set(0, 0, 0);
     initScreenAngle = Math.PI / 2;
   } else if (isFingerTarget) {
     group.position.set(-14.0, 8.5, 8.0);
     initialVelocity = new THREE.Vector3(0.06, -0.04, 0);
     initScreenAngle = -Math.PI / 6;
-    targetScale = 0.88;
-    group.scale.set(0.88, 0.88, 0.88);
+    targetScale = 0.98;
+    group.scale.set(0.98, 0.98, 0.98);
   } else if (isDelayedArrival) {
     const fromTop = Math.random() < 0.5;
     group.position.set((Math.random() - 0.5) * 10, fromTop ? 8.0 : -7.5, 1.5);
@@ -1001,15 +1001,10 @@ function buildButterfly(data = {}, isUser = false, isDelayedArrival = false, isF
   return butterflyRecord;
 }
 
-const TOTAL_DEFAULT_BUTTERFLIES = 32;
+const TOTAL_DEFAULT_BUTTERFLIES = 18;
 
 for (let i = 0; i < TOTAL_DEFAULT_BUTTERFLIES; i++) {
   const assignedShape = DEFAULT_BUTTERFLY_SHAPES[i % DEFAULT_BUTTERFLY_SHAPES.length];
-  let scale;
-  if (i < 14) {
-    scale = 0.32 + Math.random() * 0.14;
-  } else {
-    scale = 0.16 + Math.random() * 0.12;
-  }
+  const scale = 0.16 + Math.random() * 0.12;
   defaultFlock.push(buildButterfly({ wing_shape: assignedShape, antenna_type: 'ball', customScale: scale }, false, false, false));
 }

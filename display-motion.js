@@ -168,7 +168,7 @@ function updateMotion(b, dt, time) {
   let currentTargetScale = b.targetScale;
 
   if (b.isCeremony) {
-    b.group.scale.set(0.65, 0.65, 0.65);
+    b.group.scale.set(0.75, 0.75, 0.75);
   } else if (b.isSpecialLanding) {
     b.group.scale.set(b.targetScale, b.targetScale, b.targetScale);
   } else if (b.isAscendingArrival) {
