@@ -1002,14 +1002,12 @@ function buildButterfly(data = {}, isUser = false, isDelayedArrival = false, isF
   return butterflyRecord;
 }
 
-const TOTAL_DEFAULT_BUTTERFLIES = 40;
+const TOTAL_DEFAULT_BUTTERFLIES = 32;
 
 for (let i = 0; i < TOTAL_DEFAULT_BUTTERFLIES; i++) {
   const assignedShape = DEFAULT_BUTTERFLY_SHAPES[i % DEFAULT_BUTTERFLY_SHAPES.length];
   let scale;
-  if (i < 8) {
-    scale = 0.58 + Math.random() * 0.14;
-  } else if (i < 22) {
+  if (i < 14) {
     scale = 0.32 + Math.random() * 0.14;
   } else {
     scale = 0.16 + Math.random() * 0.12;
