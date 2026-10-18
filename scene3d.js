@@ -205,21 +205,14 @@ function initLoading3DScene() {
     var dt = Math.min(0.1, t - lastTime);
     lastTime = t;
 
-    // 🌟 10초 동안 0.0 -> 1.0으로 진행되는 부화 진행률
+    // 🌟 10초 동안 0.0 -> 1.0으로 진행되는 부화 진행률 (블러는 끝까지 풀리지 않고 유지)
     var prog = Math.min(1.0, t / 10.0);
     var smoothProg = prog * prog * (3.0 - 2.0 * prog);
 
-    // 🌟 1. 안개 걷힘 연출: 0~30% 구간에서는 짙은 안개를 유지하다가 30~95% 구간에서 서서히 걷혀 선명한 실루엣 노출 (opacity만 조절하여 렉 0%)
-    if (fogOverlay) {
-      var fogClearProg = Math.max(0.0, Math.min(1.0, (prog - 0.25) / 0.70));
-      var fogAlpha = 1.0 - (fogClearProg * fogClearProg * 0.92);
-      fogOverlay.style.opacity = fogAlpha.toFixed(3);
-    }
-
-    // 🌟 2. 카메라 줌인(Zoom-in): 멀리(9.6) 있던 시점이 진행률에 따라 나비 눈앞(5.7)까지 부드럽게 다가감
+    // 🌟 1. 카메라 줌인(Zoom-in): 멀리(9.6) 있던 시점이 진행률에 따라 나비 눈앞(5.7)까지 부드럽게 다가감
     loadingCamera.position.z = 9.6 - (3.9 * smoothProg);
 
-    // 🌟 3. 실루엣 각성 날갯짓: 처음에는 느리고 작게 숨 쉬듯 움직이다가 후반부로 갈수록 힘차고 넓게 날갯짓
+    // 🌟 2. 실루엣 각성 날갯짓: 처음에는 느리고 작게 숨 쉬듯 움직이다가 후반부로 갈수록 힘차고 넓게 날갯짓
     var currentFlapSpeed = 3.8 + (7.2 * smoothProg);
     flapPhase += dt * currentFlapSpeed;
     var currentFlapAmp = 0.42 + (0.48 * smoothProg);
@@ -232,7 +225,7 @@ function initLoading3DScene() {
       loadingWingR.rotation.set(uR.baseRotX || 0, (uR.baseRotY || 0) - flap, uR.baseRotZ || 0); 
     }
 
-    // 🌟 4. 자세 각성: 웅크리고 기울어져 있던 각도에서 점차 중심을 잡고 우아하게 떠오름
+    // 🌟 3. 자세 각성: 웅크리고 기울어져 있던 각도에서 점차 중심을 잡고 우아하게 떠오름
     if (loadingGroup) {
       var baseX = -0.08 * (1.0 - smoothProg * 0.85);
       var baseY = -0.35 + (0.28 * smoothProg);
