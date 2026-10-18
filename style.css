@@ -1438,19 +1438,22 @@ html, body {
   --scroll-shift: 0px;
 }
 
+/* 🌟 좌우 2열이 정확히 50:50 폭을 유지하도록 minmax(0, 1fr) 적용 및 여백 확보 */
 .specimen-container-relative {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  row-gap: 2.6rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  row-gap: 3.0rem;
   column-gap: 0.25rem;
-  padding: 1.0rem 0.35rem 4.2rem;
+  padding: 1.5rem 0.65rem 5.5rem;
   width: 100%;
   box-sizing: border-box;
 }
 
-/* 🌟 전시 중 나비 개수가 많아져도 화면 밖 나비의 렌더링 연산을 건너뛰어 렉을 방지하는 content-visibility 적용 */
+/* 🌟 사각형 잘림을 유발하던 content-visibility를 제거하고 overflow: visible로 날개 끝과 더듬이가 절대 잘리지 않도록 보호 */
 .specimen-card-item {
   position: relative;
+  width: 100%;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1458,46 +1461,47 @@ html, body {
   cursor: pointer;
   z-index: 10;
   opacity: 0;
+  overflow: visible !important;
   transform: translateY(16px);
   transition: opacity 0.45s cubic-bezier(0.16, 1, 0.3, 1), transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
-  content-visibility: auto;
-  contain-intrinsic-size: 250px 260px;
 }
 
-/* 🌟 홀수/짝수 나비 카드를 훨씬 더 엇갈리게(지그재그) 배치하여 자유롭게 날아다니는 군집 느낌 강조 */
+/* 🌟 홀수(왼쪽 열)/짝수(오른쪽 열) 나비 카드를 좌우 치우침 없이 위아래로 자연스럽게 엇갈려(지그재그) 배치 */
 .specimen-card-item.revealed:nth-child(odd) {
   opacity: 1;
-  transform: translate(-4px, -6px);
+  transform: translateY(-4px);
 }
 
 .specimen-card-item.revealed:nth-child(even) {
   opacity: 1;
-  transform: translate(4px, 58px);
+  transform: translateY(52px);
 }
 
-/* 🌟 나비 크기를 기존(210x178, 48vw)보다 한층 더 큼직하게(250x210, 56vw) 확대 + 스크롤 미세 바람 반응 */
+/* 🌟 각 열(50% 폭) 안에서 나비가 잘리지 않고 큼직하게 들어가도록 100% 폭 및 overflow: visible 적용 */
 .specimen-butterfly-wrap {
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 250px;
-  max-width: 56vw;
-  height: 210px;
+  width: 100%;
+  max-width: 210px;
+  height: 182px;
+  overflow: visible !important;
   transform: translateY(var(--scroll-shift, 0px)) rotateX(var(--scroll-tilt, 0deg));
   transition: transform 0.32s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* 🌟 GPU 가속(scale)을 사용하여 SVG 내부 여백을 넘어 나비 자체를 1.22배 더 크게 키우면서 숨 쉬는 연출 */
+/* 🌟 SVG 내부 여백을 보정하여 큼직하면서도 화면 좌우 밖으로 잘리지 않는 최적 비율(1.14배) 호흡 애니메이션 */
 @keyframes specimenWingBreathe {
-  0%   { transform: scale(1.22, 1.22) translateY(0px); }
-  100% { transform: scale(1.11, 1.22) translateY(-2.5px); }
+  0%   { transform: scale(1.14, 1.14) translateY(0px); }
+  100% { transform: scale(1.04, 1.14) translateY(-2.5px); }
 }
 
 .specimen-shadow-drop {
   filter: none !important;
   width: 100%;
   height: 100%;
+  overflow: visible !important;
   transform-origin: center center;
   animation: specimenWingBreathe 3.4s ease-in-out infinite alternate;
   will-change: transform;
@@ -1510,7 +1514,7 @@ html, body {
 
 /* 🌟 다수의 카드 스크롤 시 GPU 병목을 일으키는 개별 backdrop-filter를 제거하고 동일한 색감의 반투명 배경 적용 */
 .specimen-pill-label {
-  margin-top: 8px;
+  margin-top: 10px;
   border-radius: 9999px;
   padding: 5px 14px;
   display: inline-flex;
