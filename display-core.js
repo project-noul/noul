@@ -886,7 +886,7 @@ function buildButterfly(data = {}, isUser = false, isDelayedArrival = false, isF
   group.add(innerGroup);
 
   let initialVelocity;
-  let targetScale = data.customScale || (0.62 + Math.random() * 0.14);
+  let targetScale = data.customScale || (0.82 + Math.random() * 0.18);
 
   const targetBPM = 100;
   const flapSpeed = (targetBPM / 60) * 2 * Math.PI * 2;
@@ -898,7 +898,6 @@ function buildButterfly(data = {}, isUser = false, isDelayedArrival = false, isF
   if (isCeremony) {
     group.position.set(0, -7.5, 8.0);
     initialVelocity = new THREE.Vector3(0, 0.034, 0);
-    targetScale = 0.65;
     group.scale.set(0.65, 0.65, 0.65);
     group.rotation.set(0, 0, 0);
     initScreenAngle = Math.PI / 2;

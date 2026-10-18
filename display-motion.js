@@ -167,7 +167,9 @@ const handPointer = document.getElementById('hand-pointer');
 function updateMotion(b, dt, time) {
   let currentTargetScale = b.targetScale;
 
-  if (b.isSpecialLanding || b.isCeremony) {
+  if (b.isCeremony) {
+    b.group.scale.set(0.65, 0.65, 0.65);
+  } else if (b.isSpecialLanding) {
     b.group.scale.set(b.targetScale, b.targetScale, b.targetScale);
   } else if (b.isAscendingArrival) {
     b.arrivalTimer += dt;
