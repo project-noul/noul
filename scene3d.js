@@ -1165,15 +1165,16 @@ function initTop7PhysicsScene(customKeywordList) {
 
   var wallThick = 500;
   var floor = Bodies.rectangle(width / 2, height + wallThick / 2, width * 4, wallThick, { 
-    isStatic: true, restitution: 0.3, friction: 0.25 
+    isStatic: true, restitution: 0.42, friction: 0.2 
   });
-  var leftWall = Bodies.rectangle(-wallThick / 2, height / 2, wallThick, height * 4, { 
-    isStatic: true, restitution: 0.3, friction: 0.25 
+  var leftWall = Bodies.rectangle(-wallThick / 2, height / 2, wallThick, height * 6, { 
+    isStatic: true, restitution: 0.42, friction: 0.2 
   });
-  var rightWall = Bodies.rectangle(width + wallThick / 2, height / 2, wallThick, height * 4, { 
-    isStatic: true, restitution: 0.3, friction: 0.25 
+  var rightWall = Bodies.rectangle(width + wallThick / 2, height / 2, wallThick, height * 6, { 
+    isStatic: true, restitution: 0.42, friction: 0.2 
   });
 
+  // 🌟 [수정 완료]: 공이 천장에 막히지 않고 자유롭게 튀어오르도록 물리 천장 벽(ceiling)을 없애고 바닥과 좌우 벽만 배치
   top7Boundaries = [floor, leftWall, rightWall];
   Composite.add(top7Engine.world, top7Boundaries);
 
@@ -1182,24 +1183,35 @@ function initTop7PhysicsScene(customKeywordList) {
 
   var scaleRatio = Math.min(1.05, Math.max(0.85, width / 390));
 
-  // 🌟 실제 전달받은 데이터 목록 사용 (부족할 경우 존재하는 만큼만 스폰)
-  var spawnDataset = Array.isArray(customKeywordList) && customKeywordList.length > 0 
-    ? customKeywordList 
-    : top7KeywordData;
+  // 🌟 실제 전달받은 데이터 목록을 1위(rank 1)부터 오름차순으로 정렬하여 1위 공부터 차례대로 떨어지도록 보장
+  var rawDataset = Array.isArray(customKeywordList) && customKeywordList.length > 0 
+    ? customKeywordList.slice() 
+    : top7KeywordData.slice();
+
+  var spawnDataset = rawDataset.sort(function(a, b) {
+    return (a.rank || 99) - (b.rank || 99);
+  });
+
+  // 🌟 1위부터 순서대로 자연스럽게 위에서 떨어지도록 가로 오프셋 패턴과 일정한 간격 적용
+  var xOffsetRatios = [0.0, -0.18, 0.18, -0.11, 0.12, -0.06, 0.06];
 
   spawnDataset.forEach(function(item, idx) {
     var timer = setTimeout(function() {
       if (!top7Engine) return;
 
       var actualRadius = item.radius * scaleRatio;
-      var margin = actualRadius + 15;
-      var spawnX = margin + Math.random() * (width - margin * 2);
-      var spawnY = -actualRadius - 30 - (Math.random() * 40);
+      var margin = actualRadius + 16;
+      var usableHalfW = Math.max(10, (width / 2) - margin);
+      var ratio = xOffsetRatios[idx % xOffsetRatios.length];
+      var jitter = (idx === 0) ? 0 : ((Math.random() - 0.5) * 14);
+      var spawnX = Math.max(margin, Math.min(width - margin, (width / 2) + (usableHalfW * ratio) + jitter));
+      // 화면 바로 위에서 시작해 1위부터 순서대로 시야에 자연스럽게 진입하도록 설정
+      var spawnY = -actualRadius - 12;
 
       var ballBody = Bodies.circle(spawnX, spawnY, actualRadius, {
-        restitution: 0.32,
-        friction: 0.08,
-        frictionAir: 0.008,
+        restitution: 0.45,
+        friction: 0.06,
+        frictionAir: 0.007,
         density: 0.0025,
         angularDamping: 0.1
       });
@@ -1214,26 +1226,16 @@ function initTop7PhysicsScene(customKeywordList) {
         subColor: item.subColor
       };
 
-      Matter.Body.setVelocity(ballBody, { x: (Math.random() - 0.5) * 2.2, y: 1.5 + Math.random() * 2 });
-      Matter.Body.setAngularVelocity(ballBody, (Math.random() - 0.5) * 0.06);
+      // 초기 낙하 속도를 일정하게 부여하여 앞 순위 공이 무조건 먼저 내려오도록 보장
+      Matter.Body.setVelocity(ballBody, { x: (Math.random() - 0.5) * 0.9, y: 2.2 });
+      Matter.Body.setAngularVelocity(ballBody, (Math.random() - 0.5) * 0.04);
 
       Composite.add(top7Engine.world, ballBody);
       top7Balls.push(ballBody);
-    }, idx * 140);
+    }, idx * 220);
 
     top7SpawnTimeouts.push(timer);
   });
-
-  // 🌟 모든 공이 화면 안으로 떨어진 직후 상단 천장 경계벽을 닫아 마우스/터치로 공을 위로 튕겨도 화면 밖으로 날아가지 않도록 보호
-  var ceilingTimer = setTimeout(function() {
-    if (!top7Engine) return;
-    var ceiling = Bodies.rectangle(width / 2, -wallThick / 2, width * 4, wallThick, {
-      isStatic: true, restitution: 0.3, friction: 0.25
-    });
-    top7Boundaries.push(ceiling);
-    Composite.add(top7Engine.world, ceiling);
-  }, spawnDataset.length * 140 + 1100);
-  top7SpawnTimeouts.push(ceilingTimer);
 
   var mouse = Mouse.create(canvas);
   var mouseConstraint = MouseConstraint.create(top7Engine, {
@@ -1251,7 +1253,8 @@ function initTop7PhysicsScene(customKeywordList) {
     var beta = e.beta || 0;
 
     var gravityX = Math.max(-1.8, Math.min(1.8, (gamma / 45) * 1.3));
-    var gravityY = Math.max(-1.8, Math.min(1.8, (beta / 45) * 1.3));
+    // 🌟 기기를 거꾸로 기울여도 공이 위쪽으로 영원히 날아가지 않도록 상향 중력 한계를 적당히 제한
+    var gravityY = Math.max(-0.55, Math.min(1.8, (beta / 45) * 1.3));
 
     if (Math.abs(gravityX) < 0.08 && Math.abs(gravityY) < 0.08) {
       gravityY = 0.95;
@@ -1268,7 +1271,37 @@ function initTop7PhysicsScene(customKeywordList) {
   (function renderTop7Frame() {
     if (!top7Engine) return;
     top7RenderLoop = requestAnimationFrame(renderTop7Frame);
+
+    // 리사이즈 대응: 캔버스 크기가 변경되었을 경우 벽 위치 동기화
+    if (canvas.width !== width || canvas.height !== height) {
+      width = canvas.width;
+      height = canvas.height;
+      Matter.Body.setPosition(floor, { x: width / 2, y: height + wallThick / 2 });
+      Matter.Body.setPosition(leftWall, { x: -wallThick / 2, y: height / 2 });
+      Matter.Body.setPosition(rightWall, { x: width + wallThick / 2, y: height / 2 });
+    }
+
     Engine.update(top7Engine, 1000 / 60);
+
+    // 🌟 천장을 없애되 너무 높게 올라가지 않도록 소프트 상한선(화면 상단 위로 적당한 여유 높이) 적용
+    var maxUpwardLimitY = -Math.min(height * 0.38, 180);
+    for (var bIdx = 0; bIdx < top7Balls.length; bIdx++) {
+      var b = top7Balls[bIdx];
+      // 공이 화면 위쪽 여유 공간을 넘어 너무 높이 올라가면 부드럽게 속도를 줄여 다시 내려오게 함
+      if (b.position.y < maxUpwardLimitY && b.velocity.y < 0) {
+        Matter.Body.setPosition(b, { x: b.position.x, y: maxUpwardLimitY });
+        Matter.Body.setVelocity(b, { x: b.velocity.x * 0.9, y: Math.abs(b.velocity.y) * 0.25 + 0.8 });
+      }
+      // 좌우 경계 이탈 안전장치
+      var r = b.customData ? b.customData.radius : 60;
+      if (b.position.x < r) {
+        Matter.Body.setPosition(b, { x: r, y: b.position.y });
+        if (b.velocity.x < 0) Matter.Body.setVelocity(b, { x: -b.velocity.x * 0.4, y: b.velocity.y });
+      } else if (b.position.x > width - r) {
+        Matter.Body.setPosition(b, { x: width - r, y: b.position.y });
+        if (b.velocity.x > 0) Matter.Body.setVelocity(b, { x: -b.velocity.x * 0.4, y: b.velocity.y });
+      }
+    }
 
     ctx.clearRect(0, 0, width, height);
 

@@ -95,6 +95,27 @@ if (typeof wingDataset !== 'undefined') {
   wingDataset.forEach(function(w) { butterflyPathData[w.id] = w; });
 }
 
+// 🌟 모바일에서 SVG <feGaussianBlur> 필터가 네모 박스로 깨지는 현상을 방지하기 위해 오프스크린 캔버스에서 미리 부드러운 블러 이미지를 생성하는 헬퍼
+function generateBlurredBodyDataUrl() {
+  try {
+    var c = document.createElement('canvas');
+    c.width = 96;
+    c.height = 96;
+    var ctx = c.getContext('2d', { willReadFrequently: true });
+    ctx.fillStyle = '#d4d4d8';
+    ctx.fillRect(0, 0, 96, 96);
+
+    if (typeof alignCanvas !== 'undefined' && alignCanvas && typeof rawImage !== 'undefined' && rawImage && rawImage.width) {
+      ctx.drawImage(alignCanvas, 0, 0, 96, 96);
+      if (typeof executeReliableFastBlur === 'function') {
+        executeReliableFastBlur(c, 5);
+      }
+      return c.toDataURL('image/jpeg', 0.75);
+    }
+  } catch (e) {}
+  return createFallbackDummyTexture('#e4e4e7', '#d4d4d8');
+}
+
 var bodyBlurSyncRafId = null;
 function syncHeroBodyBlurImage() {
   if (selectedBodyColor !== 'blur') return;
@@ -104,7 +125,7 @@ function syncHeroBodyBlurImage() {
     var blurImgEl = document.getElementById('hero-body-blur-img');
     if (blurImgEl && typeof alignCanvas !== 'undefined' && alignCanvas) {
       try {
-        blurImgEl.setAttribute('href', alignCanvas.toDataURL('image/jpeg', 0.72));
+        blurImgEl.setAttribute('href', generateBlurredBodyDataUrl());
       } catch (e) {}
     }
   });
@@ -144,16 +165,7 @@ function updateHeroPreview() {
         ant.render(10.5) +
       '</g>';
   } else if (selectedBodyColor === 'blur') {
-    var canvasDataUrl = "";
-    if (typeof alignCanvas !== 'undefined' && alignCanvas && typeof rawImage !== 'undefined' && rawImage && rawImage.width) {
-      try {
-        canvasDataUrl = alignCanvas.toDataURL('image/jpeg', 0.72);
-      } catch (e) {
-        canvasDataUrl = createFallbackDummyTexture();
-      }
-    } else {
-      canvasDataUrl = createFallbackDummyTexture();
-    }
+    var canvasDataUrl = generateBlurredBodyDataUrl();
     bodyExtraDefs =
       '<mask id="hero-body-ant-mask" maskUnits="userSpaceOnUse" x="-200" y="-200" width="1400" height="1400">' +
         '<rect x="-200" y="-200" width="1400" height="1400" fill="black"/>' +
@@ -161,14 +173,11 @@ function updateHeroPreview() {
         '<g transform="translate(' + currentWing.headX + ', ' + currentWing.headY + ')" color="#ffffff">' +
           ant.render(10.5) +
         '</g>' +
-      '</mask>' +
-      '<filter id="hero-body-blur-filter" x="-30%" y="-30%" width="160%" height="160%">' +
-        '<feGaussianBlur stdDeviation="18" />' +
-      '</filter>';
+      '</mask>';
     bodyAndAntennaSvgEl =
       '<g mask="url(#hero-body-ant-mask)">' +
         '<rect x="0" y="0" width="1000" height="1000" fill="#d4d4d8"/>' +
-        '<image id="hero-body-blur-img" href="' + canvasDataUrl + '" x="0" y="0" width="1000" height="1000" preserveAspectRatio="none" filter="url(#hero-body-blur-filter)"/>' +
+        '<image id="hero-body-blur-img" href="' + canvasDataUrl + '" x="0" y="0" width="1000" height="1000" preserveAspectRatio="none"/>' +
       '</g>';
   } else {
     bodyAndAntennaSvgEl =
