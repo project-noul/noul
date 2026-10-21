@@ -1339,19 +1339,27 @@ function initTop7PhysicsScene(customKeywordList) {
 
       ctx.rotate(-angle);
 
-      var titleFontSize = Math.max(12, Math.min(18, data.radius * 0.28));
+      var titleFontSize = Math.max(11, Math.min(18, data.radius * 0.28));
       var percentFontSize = Math.max(10, Math.min(15, data.radius * 0.20));
+      var maxTextWidth = data.radius * 1.62;
 
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
 
       ctx.font = "bold " + titleFontSize + "px -apple-system, BlinkMacSystemFont, Pretendard, sans-serif";
+      // 🌟 긴 키워드가 작은 공에 들어올 때 원 밖으로 삐져나오지 않도록 폰트 크기 자동 축소
+      var measuredW = ctx.measureText(data.keyword || "").width;
+      if (measuredW > maxTextWidth && measuredW > 0) {
+        titleFontSize = Math.max(9.5, titleFontSize * (maxTextWidth / measuredW));
+        ctx.font = "bold " + titleFontSize.toFixed(1) + "px -apple-system, BlinkMacSystemFont, Pretendard, sans-serif";
+      }
+
       ctx.fillStyle = data.rank === 1 ? "#050505" : data.textColor;
-      ctx.fillText(data.keyword, 0, -percentFontSize * 0.65);
+      ctx.fillText(data.keyword, 0, -percentFontSize * 0.65, maxTextWidth);
 
       ctx.font = "500 " + percentFontSize + "px -apple-system, BlinkMacSystemFont, Pretendard, sans-serif";
       ctx.fillStyle = data.subColor;
-      ctx.fillText(data.percent, 0, percentFontSize * 0.85);
+      ctx.fillText(data.percent, 0, percentFontSize * 0.85, maxTextWidth);
 
       ctx.restore();
     });

@@ -214,7 +214,7 @@ function showScreen(screenId) {
       } else if (screenId === 'screen-top7-bridge') {
         stopBubblePhysics(); stopLoading3DScene(); stopShare3DScene(); stopTop7PhysicsScene(); initTop7BridgeScreen();
       } else if (screenId === 'screen-survey-concern-top7') {
-        stopBubblePhysics(); stopLoading3DScene(); stopShare3DScene(); updateTop7PickedSubtitle();
+        stopBubblePhysics(); stopLoading3DScene(); stopShare3DScene(); stopTop7PhysicsScene(); updateTop7PickedSubtitle();
         // 🌟 실제 데이터 집계 후 현재 화면이 여전히 top7일 때만 동적으로 공 물리 화면 초기화
         fetchTopKeywordsData().then(function(realTopList) {
           var currentActive = document.querySelector('.screen.active');
@@ -229,8 +229,8 @@ function showScreen(screenId) {
       } else if (screenId === 'screen-shape-select') {
         stopBubblePhysics(); stopLoading3DScene(); stopShare3DScene(); stopTop7PhysicsScene();
         if (typeof switchTab === 'function') switchTab('wing');
-        if (typeof updateHeroPreview === 'function') updateHeroPreview();
         if (typeof drawAlignCanvas === 'function') drawAlignCanvas();
+        if (typeof updateHeroPreview === 'function') updateHeroPreview();
       } else if (screenId === 'screen-gallery') {
         stopBubblePhysics(); stopLoading3DScene(); stopShare3DScene(); stopTop7PhysicsScene(); initSpecimenGallery();
       } else if (screenId === 'screen-survey-bridge') {
@@ -846,6 +846,22 @@ function resetOpeningFlow() {
   if (typeof selectedBodyColor !== 'undefined') selectedBodyColor = 'blur';
   if (typeof currentBlurPx !== 'undefined') currentBlurPx = 0;
   if (typeof isSymmetryEnabled !== 'undefined') isSymmetryEnabled = false;
+
+  // 🌟 조정 탭의 슬라이더, 좌우 대칭 토글, 몸통 색상 버튼 UI 및 프리뷰 캔버스도 초기 상태로 동기화
+  if (typeof blurSlider !== 'undefined' && blurSlider) {
+    blurSlider.value = 0;
+    if (typeof updateSliderProgress === 'function') updateSliderProgress(0);
+  }
+  if (typeof toggleSymmetryBtn !== 'undefined' && toggleSymmetryBtn) {
+    toggleSymmetryBtn.classList.remove('toggle-active');
+    toggleSymmetryBtn.setAttribute('aria-pressed', 'false');
+  }
+  if (typeof setBodyColorMode === 'function') {
+    setBodyColorMode('blur');
+  } else {
+    if (typeof drawAlignCanvas === 'function') drawAlignCanvas();
+    if (typeof updateHeroPreview === 'function') updateHeroPreview();
+  }
 
   if (elOpeningCocoonGroup) { elOpeningCocoonGroup.classList.add('hidden'); }
   if (elOpeningStep3CocoonGroup) { elOpeningStep3CocoonGroup.classList.add('hidden'); }
