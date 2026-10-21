@@ -85,7 +85,7 @@ function resetHandCards() {
   if (floatingConcernCard) floatingConcernCard.classList.remove('visible');
   if (floatingConcernReason) floatingConcernReason.innerHTML = '';
       
-  if (!activeCeremonyButterfly) {
+  if (!activeCeremonyButterfly && !isCeremonyActive) {
     if (floatingInfoCard) {
       floatingInfoCard.classList.remove('visible');
       floatingInfoCard.style.left = '0px';
@@ -101,18 +101,34 @@ function triggerLandingStorySequence(b) {
     floatingConcernCard.classList.add('visible');
     const fullReason = `"${b.concern_reason}"`;
     landingReasonDelayTimer = setTimeout(() => {
+      if (specialButterfly !== b || b.specialState !== 'landed') return;
       typeWriterText(floatingConcernReason, fullReason, 45, null, false);
     }, 150);
   }
 
   landingStorySequenceTimer = setTimeout(() => {
     if (floatingConcernCard) floatingConcernCard.classList.remove('visible');
-    if (floatingInfoCard && !activeCeremonyButterfly) {
+    // 🌟 4.2초 뒤 전환 시점에도 나비가 여전히 손끝에 착지해 있고 세레머니 중이 아닐 때만 한마디 카드 표시
+    if (
+      floatingInfoCard &&
+      !activeCeremonyButterfly &&
+      !isCeremonyActive &&
+      isHandDetected &&
+      specialButterfly === b &&
+      b.specialState === 'landed'
+    ) {
+      const handCardX = (currentScreenX + 260 + 280 > window.innerWidth)
+        ? Math.max(20, currentScreenX - 500)
+        : (currentScreenX + 260);
+      const handCardY = Math.max(20, Math.min(window.innerHeight - 180, currentScreenY - 145));
+
       floatingInfoCard.style.left = '0px';
+      floatingInfoCard.style.transform = `translate3d(${handCardX}px, ${handCardY}px, 0)`;
       floatingName.innerText = `‘${b.name}’`;
       floatingInfoCard.classList.add('visible');
       const fullMemo = `"${b.memo}"`;
       landingMemoDelayTimer = setTimeout(() => {
+        if (specialButterfly !== b || b.specialState !== 'landed' || activeCeremonyButterfly || isCeremonyActive) return;
         typeWriterText(floatingMemo, fullMemo, 45, null, false);
       }, 150);
     }
@@ -122,6 +138,11 @@ function triggerLandingStorySequence(b) {
 function triggerCeremonyCardSequence(b) {
   clearTimeout(ceremonyCardTimer);
   if (ceremonyTypingTimeout) clearTimeout(ceremonyTypingTimeout);
+  // 혹시 남아있던 손가락 카드 타이머가 세레머니 카드를 덮어쓰지 않도록 정리
+  clearTimeout(landingStorySequenceTimer);
+  clearTimeout(landingMemoDelayTimer);
+  if (handTypingTimeout) clearTimeout(handTypingTimeout);
+  if (floatingConcernCard) floatingConcernCard.classList.remove('visible');
 
   // 나비의 3D 월드 Y좌표를 화면 2D Y좌표로 정확히 투영
   const bPos = new THREE.Vector3(0, b.group.position.y, b.group.position.z);
@@ -363,7 +384,10 @@ function updateMotion(b, dt, time) {
                   disposeButterfly(oldest);
               }
 
-              if (floatingInfoCard) floatingInfoCard.style.left = '0px';
+              if (floatingInfoCard) {
+                floatingInfoCard.classList.remove('visible');
+                floatingInfoCard.style.left = '0px';
+              }
               activeCeremonyButterfly = null;
               isCeremonyActive = false;
               // 🌟 대기 중인 세레머니가 많으면 다음 등장 대기 시간을 2초로 단축
@@ -654,7 +678,7 @@ function animate() {
     if (floatingConcernCard && floatingConcernCard.classList.contains('visible')) { 
       floatingConcernCard.style.transform = `translate3d(${handCardX}px, ${handCardY}px, 0)`; 
     }
-    if (floatingInfoCard && floatingInfoCard.classList.contains('visible') && !activeCeremonyButterfly) { 
+    if (floatingInfoCard && floatingInfoCard.classList.contains('visible') && !activeCeremonyButterfly && !isCeremonyActive) { 
       floatingInfoCard.style.left = '0px';
       floatingInfoCard.style.transform = `translate3d(${handCardX}px, ${handCardY}px, 0)`; 
     }
@@ -666,10 +690,10 @@ function animate() {
           releaseLandingTimer = null;
       }
 
-      if (!specialButterfly && !activeCeremonyButterfly && !isCreatingSpecialButterfly) {
+      if (!specialButterfly && !activeCeremonyButterfly && !isCeremonyActive && !isCreatingSpecialButterfly) {
           if (!landOneGestureTimer) {
               landOneGestureTimer = setTimeout(() => {
-                  if (interactionMode === 'land_one' && isHandDetected && !specialButterfly && !activeCeremonyButterfly && !isCreatingSpecialButterfly) {
+                  if (interactionMode === 'land_one' && isHandDetected && !specialButterfly && !activeCeremonyButterfly && !isCeremonyActive && !isCreatingSpecialButterfly) {
                       isCreatingSpecialButterfly = true;
                       let targetData = {};
                       let isUserButterfly = false;
@@ -727,12 +751,14 @@ const ceremonyQueue = [];
 let isCeremonyActive = false;
 let ceremonyCooldownTimer = null;
 const seenButterflyIds = new Set();
+const fetchingButterflyIds = new Set();
 let maxSeenNumericId = 0;
 let globalSupabaseInstance = null;
 
 function registerSeenButterflyId(data) {
   if (!data || data.id === undefined || data.id === null || data.id === '') return false;
   const key = String(data.id);
+  fetchingButterflyIds.delete(key);
   if (seenButterflyIds.has(key)) return false;
   seenButterflyIds.add(key);
   const numId = Number(data.id);
@@ -775,6 +801,13 @@ function startNextCeremonyFromQueue() {
     triggerNextCeremonyWithDelay(1000);
     return;
   }
+
+  // 세레머니 시작 시 대기 중이던 손가락 착지 타이머 및 손가락 카드를 먼저 안전하게 정리
+  if (landOneGestureTimer) {
+    clearTimeout(landOneGestureTimer);
+    landOneGestureTimer = null;
+  }
+  resetHandCards();
 
   isCeremonyActive = true;
   const nextData = ceremonyQueue.shift();
@@ -869,22 +902,28 @@ setTimeout(() => {
               const unseenIds = data
                 .filter(item => {
                   if (!item || item.id === undefined || item.id === null) return false;
+                  const key = String(item.id);
+                  if (seenButterflyIds.has(key) || fetchingButterflyIds.has(key)) return false;
                   const numId = Number(item.id);
-                  return !seenButterflyIds.has(String(item.id)) && (maxSeenNumericId === 0 || (!isNaN(numId) && numId > maxSeenNumericId));
+                  return maxSeenNumericId === 0 || (!isNaN(numId) && numId > maxSeenNumericId);
                 })
                 .map(item => item.id);
 
               if (unseenIds.length > 0) {
+                unseenIds.forEach(id => fetchingButterflyIds.add(String(id)));
                 supabaseInstance.from('butterflies')
                   .select('*')
                   .in('id', unseenIds)
                   .order('id', { ascending: true })
                   .then(({ data: fullData, error: fullErr }) => {
+                    unseenIds.forEach(id => fetchingButterflyIds.delete(String(id)));
                     if (!fullErr && Array.isArray(fullData) && fullData.length > 0) {
                       fullData.forEach(item => addUserButterfly(item, false, true));
                     }
                   })
-                  .catch(() => {});
+                  .catch(() => {
+                    unseenIds.forEach(id => fetchingButterflyIds.delete(String(id)));
+                  });
               }
             }
           })
