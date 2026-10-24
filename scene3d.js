@@ -205,8 +205,8 @@ function initLoading3DScene() {
     var dt = Math.min(0.1, t - lastTime);
     lastTime = t;
 
-    // 🌟 10초 동안 0.0 -> 1.0으로 진행되는 부화 진행률 (블러는 끝까지 풀리지 않고 유지)
-    var prog = Math.min(1.0, t / 10.0);
+    // 🌟 5초 동안 0.0 -> 1.0으로 진행되는 부화 진행률 (블러는 끝까지 풀리지 않고 유지)
+    var prog = Math.min(1.0, t / 5.0);
     var smoothProg = prog * prog * (3.0 - 2.0 * prog);
 
     // 🌟 1. 카메라 줌인(Zoom-in): 멀리(9.6) 있던 시점이 진행률에 따라 나비 눈앞(5.7)까지 부드럽게 다가감
@@ -577,9 +577,9 @@ function initFullButterflyViewer(textureURL) {
 
     if (isPressingScreen && !isFlyingAway) {
       var pressDuration = (now - pressStartTime) / 1000;
-      if (pressDuration >= 2.0) {
+      if (pressDuration >= 1.0) {
         if (!isChargeTriggered) { isChargeTriggered = true; startChargeVibrationLoop(); }
-        var currentChargeSec = Math.max(0, pressDuration - 2.0);
+        var currentChargeSec = Math.max(0, pressDuration - 1.0);
         chargeProgress = Math.min(1.0, currentChargeSec / 2.0);
         updateChargeUIAndCamera(chargeProgress, currentChargeSec);
         spawnEnergyParticles();
@@ -718,7 +718,7 @@ function updateChargeUIAndCamera(progress, currentChargeSec) {
 
   var flyLabel = document.getElementById('preview-fly-label');
   if (flyLabel) {
-    flyLabel.innerHTML = progress >= 1.0 ? "위로 쓸어 올려주세요" : "화면 아무 곳을<br>2초간 가만히 길게 눌러주세요.";
+    flyLabel.innerHTML = progress >= 1.0 ? "위로 쓸어 올려주세요" : "화면 아무 곳을<br>1초간 가만히 길게 눌러주세요.";
   }
 }
 
@@ -750,7 +750,7 @@ function resetChargeState() {
 
   var flyLabel = document.getElementById('preview-fly-label');
   if (flyLabel) {
-    flyLabel.innerHTML = "화면 아무 곳을<br>2초간 가만히 길게 눌러주세요.";
+    flyLabel.innerHTML = "화면 아무 곳을<br>1초간 가만히 길게 눌러주세요.";
   }
 }
 

@@ -22,8 +22,6 @@ var ALL_SCREENS = [
   'screen-cover', 'screen-menu', 'screen-gallery', 'screen-intro', 'screen-guide',
   'screen-opening', 'screen-survey', 
   'screen-survey-core-concern', 'screen-survey-concern-reason', 
-  'screen-top7-bridge',
-  'screen-survey-concern-top7',
   'screen-post-concern-bridge', 'screen-capture-guide', 
   'screen-shape-select', 'screen-survey-bridge',
   'screen-loading', 'screen-preview', 'screen-complete', 'screen-share'
@@ -58,6 +56,7 @@ var surveyTitleTypeTimer = null;
 var coreConcernTypeTimer = null;
 var openingDelayTimer = null;
 var auxTimers = [];
+var activeTypeSkipCleanUp = null;
 
 var lastSavedButterflyId = null;
 var currentSavePromise = null;
@@ -70,6 +69,10 @@ function registerAuxTimer(fn, delay) {
 }
 
 function clearAllTimers() {
+  if (typeof activeTypeSkipCleanUp === 'function') {
+    activeTypeSkipCleanUp();
+    activeTypeSkipCleanUp = null;
+  }
   clearTimeout(typeTimer);
   clearTimeout(guideTypeTimer);
   clearTimeout(surveyTitleTypeTimer);
@@ -211,17 +214,6 @@ function showScreen(screenId) {
         stopBubblePhysics(); stopLoading3DScene(); stopShare3DScene(); stopTop7PhysicsScene(); initCoreConcernScreen();
       } else if (screenId === 'screen-survey-concern-reason') {
         stopBubblePhysics(); stopLoading3DScene(); stopShare3DScene(); stopTop7PhysicsScene(); initConcernReasonScreen();
-      } else if (screenId === 'screen-top7-bridge') {
-        stopBubblePhysics(); stopLoading3DScene(); stopShare3DScene(); stopTop7PhysicsScene(); initTop7BridgeScreen();
-      } else if (screenId === 'screen-survey-concern-top7') {
-        stopBubblePhysics(); stopLoading3DScene(); stopShare3DScene(); stopTop7PhysicsScene(); updateTop7PickedSubtitle();
-        // 🌟 실제 데이터 집계 후 현재 화면이 여전히 top7일 때만 동적으로 공 물리 화면 초기화
-        fetchTopKeywordsData().then(function(realTopList) {
-          var currentActive = document.querySelector('.screen.active');
-          if (currentActive && currentActive.id === 'screen-survey-concern-top7') {
-            initTop7PhysicsScene(realTopList);
-          }
-        });
       } else if (screenId === 'screen-post-concern-bridge') {
         stopBubblePhysics(); stopLoading3DScene(); stopShare3DScene(); stopTop7PhysicsScene(); initPostConcernBridgeScreen();
       } else if (screenId === 'screen-capture-guide') {
@@ -295,15 +287,13 @@ function updateDevScreenBadge() {
   if (!badge) return;
   var activeScreen = document.querySelector('.screen.active');
   var name = activeScreen ? activeScreen.id : 'none';
-  if (name === 'screen-opening') name += ' (' + openingCurrentStep + '/3: 오프닝대사)';
+  if (name === 'screen-opening') name += ' (1/1: 오프닝대사)';
   else if (name === 'screen-survey') {
     if (currentStepIdx === 0) name += ' (1/3: 이름)';
     else if (currentStepIdx === 1) name += ' (2/3: 고민선택)';
     else if (currentStepIdx === 2) name += ' (3/3: 다정한한마디)';
   } else if (name === 'screen-survey-core-concern') name += ' (핵심고민)';
   else if (name === 'screen-survey-concern-reason') name += ' (고민이유)';
-  else if (name === 'screen-top7-bridge') name += ' (고민탑7브릿지)';
-  else if (name === 'screen-survey-concern-top7') name += ' (고민탑7)';
   else if (name === 'screen-post-concern-bridge') name += ' (나비전환브릿지)';
   badge.innerText = '화면: ' + name;
 }
@@ -316,7 +306,7 @@ function startAnswerShowcaseSequence() {
   if (pBar) pBar.style.width = '0%';
   
   var intervalDelay = 100;
-  var stepIncrease = 100 / (10000 / intervalDelay);
+  var stepIncrease = 100 / (5000 / intervalDelay);
 
   showcaseInterval = setInterval(function() {
     progress += stepIncrease;
@@ -341,7 +331,7 @@ function startAnswerShowcaseSequence() {
           
           var flyLabel = document.getElementById('preview-fly-label');
           if (flyLabel) {
-            flyLabel.innerHTML = "화면 아무 곳을<br>2초간 길게 눌러 기를 모아주세요.";
+            flyLabel.innerHTML = "화면 아무 곳을<br>1초간 길게 눌러 기를 모아주세요.";
           }
 
           showScreen('screen-preview');
@@ -563,33 +553,9 @@ document.addEventListener('click', function(e) {
     if (curId === 'screen-cover' || curId === 'screen-menu') { showScreen('screen-opening'); return; }
     if (curId === 'screen-gallery' || curId === 'screen-intro' || curId === 'screen-guide') { showScreen('screen-menu'); return; }
     if (curId === 'screen-opening') {
-      if (openingCurrentStep === 1) {
-        openingCurrentStep = 2;
-        if (elOpeningCocoonGroup) elOpeningCocoonGroup.classList.remove('hidden');
-        if (elOpeningStep3CocoonGroup) elOpeningStep3CocoonGroup.classList.add('hidden');
-        if (elOpeningNextGroup) { elOpeningNextGroup.classList.remove('visible'); elOpeningNextGroup.classList.add('hidden'); }
-        typeWriterText(elOpeningText, "꺼내어 보이지 못한 채,<br>응어리진 무언가... 쉽게 털어놓지 못할 것도 있겠지요.", function() {
-          if (btnOpeningNext) btnOpeningNext.innerHTML = "다음";
-          if (elOpeningNextGroup) { elOpeningNextGroup.classList.remove('hidden'); elOpeningNextGroup.classList.add('visible'); }
-        });
-        updateDevScreenBadge(); 
-        return;
-      } else if (openingCurrentStep === 2) {
-        openingCurrentStep = 3;
-        if (elOpeningCocoonGroup) elOpeningCocoonGroup.classList.add('hidden');
-        if (elOpeningStep3CocoonGroup) elOpeningStep3CocoonGroup.classList.remove('hidden');
-        if (elOpeningNextGroup) { elOpeningNextGroup.classList.remove('visible'); elOpeningNextGroup.classList.add('hidden'); }
-        typeWriterText(elOpeningText, "오늘 이곳에서,<br>당신의 마음 깊은 곳에 묻어둔 고치를<br>조심스레 꺼내어보려 합니다.", function() {
-          if (btnOpeningNext) btnOpeningNext.innerHTML = "다음";
-          if (elOpeningNextGroup) { elOpeningNextGroup.classList.remove('hidden'); elOpeningNextGroup.classList.add('visible'); }
-        });
-        updateDevScreenBadge(); 
-        return;
-      } else if (openingCurrentStep === 3) { 
-        currentStepIdx = 0; 
-        showScreen('screen-survey'); 
-        return; 
-      }
+      currentStepIdx = 0; 
+      showScreen('screen-survey'); 
+      return; 
     }
     if (curId === 'screen-survey') {
       if (currentStepIdx === 0) { 
@@ -614,14 +580,6 @@ document.addEventListener('click', function(e) {
       showScreen('screen-survey-concern-reason'); 
       return; 
     } else if (curId === 'screen-survey-concern-reason') { 
-      ensureDevDummyData(); 
-      showScreen('screen-top7-bridge'); 
-      return; 
-    } else if (curId === 'screen-top7-bridge') {
-      ensureDevDummyData();
-      showScreen('screen-survey-concern-top7');
-      return;
-    } else if (curId === 'screen-survey-concern-top7') { 
       ensureDevDummyData(); 
       currentStepIdx = 2; 
       showScreen('screen-survey'); 
@@ -649,7 +607,7 @@ document.addEventListener('click', function(e) {
       
       var flyLabel = document.getElementById('preview-fly-label');
       if (flyLabel) {
-        flyLabel.innerHTML = "화면 아무 곳을<br>2초간 길게 눌러 기를 모아주세요.";
+        flyLabel.innerHTML = "화면 아무 곳을<br>1초간 길게 눌러 기를 모아주세요.";
       }
       
       showScreen('screen-preview'); 
@@ -681,46 +639,14 @@ document.addEventListener('click', function(e) {
     if (curId === 'screen-menu') { showScreen('screen-cover'); return; }
     if (curId === 'screen-gallery' || curId === 'screen-intro' || curId === 'screen-guide') { showScreen('screen-menu'); return; }
     if (curId === 'screen-opening') {
-      if (openingCurrentStep === 3) {
-        openingCurrentStep = 2;
-        if (elOpeningCocoonGroup) elOpeningCocoonGroup.classList.remove('hidden');
-        if (elOpeningStep3CocoonGroup) elOpeningStep3CocoonGroup.classList.add('hidden');
-        if (elOpeningNextGroup) { elOpeningNextGroup.classList.remove('visible'); elOpeningNextGroup.classList.add('hidden'); }
-        typeWriterText(elOpeningText, "꺼내어 보이지 못한 채,<br>응어리진 무언가... 쉽게 털어놓지 못할 것도 있겠지요.", function() {
-          if (btnOpeningNext) btnOpeningNext.innerHTML = "다음";
-          if (elOpeningNextGroup) { elOpeningNextGroup.classList.remove('hidden'); elOpeningNextGroup.classList.add('visible'); }
-        });
-        updateDevScreenBadge(); 
-        return;
-      } else if (openingCurrentStep === 2) {
-        openingCurrentStep = 1;
-        if (elOpeningCocoonGroup) elOpeningCocoonGroup.classList.add('hidden');
-        if (elOpeningStep3CocoonGroup) elOpeningStep3CocoonGroup.classList.add('hidden');
-        if (elOpeningNextGroup) { elOpeningNextGroup.classList.remove('visible'); elOpeningNextGroup.classList.add('hidden'); }
-        typeWriterText(elOpeningText, "안녕하세요?<br>지금, 걱정 없는 삶을 살아가고 있나요?", function() {
-          if (btnOpeningNext) btnOpeningNext.innerHTML = "다음";
-          if (elOpeningNextGroup) { elOpeningNextGroup.classList.remove('hidden'); elOpeningNextGroup.classList.add('visible'); }
-        });
-        updateDevScreenBadge(); 
-        return;
-      } else if (openingCurrentStep === 1) { 
-        showScreen('screen-cover'); 
-        return; 
-      }
+      showScreen('screen-cover'); 
+      return; 
     }
     if (curId === 'screen-survey') {
-      if (currentStepIdx === 2) { showScreen('screen-survey-concern-top7'); return; }
+      if (currentStepIdx === 2) { showScreen('screen-survey-concern-reason'); return; }
       else if (currentStepIdx === 1) { currentStepIdx = 0; renderSurveyStep(); return; }
       else if (currentStepIdx === 0) {
         showScreen('screen-opening'); 
-        openingCurrentStep = 3;
-        if (elOpeningCocoonGroup) elOpeningCocoonGroup.classList.add('hidden');
-        if (elOpeningStep3CocoonGroup) elOpeningStep3CocoonGroup.classList.remove('hidden');
-        typeWriterText(elOpeningText, "오늘 이곳에서,<br>당신의 마음 깊은 곳에 묻어둔 고치를<br>조심스레 꺼내어보려 합니다.", function() {
-          if (btnOpeningNext) btnOpeningNext.innerHTML = "다음";
-          if (elOpeningNextGroup) { elOpeningNextGroup.classList.remove('hidden'); elOpeningNextGroup.classList.add('visible'); }
-        });
-        updateDevScreenBadge(); 
         return;
       }
     } else if (curId === 'screen-survey-core-concern') { 
@@ -730,12 +656,6 @@ document.addEventListener('click', function(e) {
       return; 
     } else if (curId === 'screen-survey-concern-reason') { 
       showScreen('screen-survey-core-concern'); 
-      return; 
-    } else if (curId === 'screen-top7-bridge') {
-      showScreen('screen-survey-concern-reason');
-      return;
-    } else if (curId === 'screen-survey-concern-top7') { 
-      showScreen('screen-top7-bridge'); 
       return; 
     } else if (curId === 'screen-post-concern-bridge') { 
       currentStepIdx = 2; 
@@ -796,12 +716,49 @@ var elOpeningStep3CocoonGroup = document.getElementById('opening-step3-cocoon-gr
 
 function typeWriterText(targetElement, textWithHtml, onComplete) {
   clearTimeout(typeTimer);
+  if (typeof activeTypeSkipCleanUp === 'function') {
+    activeTypeSkipCleanUp();
+    activeTypeSkipCleanUp = null;
+  }
   if (!targetElement) return;
   targetElement.innerHTML = "";
   var tokens = textWithHtml.match(/(<[^>]+>|[^<])/g) || [];
   var idx = 0, currentContent = "";
+  var isCompleted = false;
+
+  var screenEl = targetElement.closest('.screen') || document;
+
+  function finishImmediately(e) {
+    if (e && e.target && e.target.closest('button, a, input, textarea, label, #dev-quick-navigator')) {
+      return;
+    }
+    if (isCompleted) return;
+    isCompleted = true;
+    clearTimeout(typeTimer);
+    cleanupSkipListeners();
+    targetElement.innerHTML = textWithHtml;
+    if (onComplete) onComplete();
+  }
+
+  function cleanupSkipListeners() {
+    screenEl.removeEventListener('click', finishImmediately);
+    screenEl.removeEventListener('touchstart', finishImmediately);
+    if (activeTypeSkipCleanUp === cleanupSkipListeners) {
+      activeTypeSkipCleanUp = null;
+    }
+  }
+
+  activeTypeSkipCleanUp = cleanupSkipListeners;
+
+  setTimeout(function() {
+    if (!isCompleted) {
+      screenEl.addEventListener('click', finishImmediately);
+      screenEl.addEventListener('touchstart', finishImmediately, { passive: true });
+    }
+  }, 50);
 
   (function nextChar() {
+    if (isCompleted) return;
     if (idx < tokens.length) {
       var char = tokens[idx];
       currentContent += char;
@@ -813,6 +770,8 @@ function typeWriterText(targetElement, textWithHtml, onComplete) {
       else if (char === ',') delay = 250;
       typeTimer = setTimeout(nextChar, delay);
     } else {
+      isCompleted = true;
+      cleanupSkipListeners();
       registerAuxTimer(function() { if (onComplete) onComplete(); }, 200);
     }
   })();
@@ -863,14 +822,14 @@ function resetOpeningFlow() {
     if (typeof updateHeroPreview === 'function') updateHeroPreview();
   }
 
+  // 🌟 오프닝을 한 페이지로 통합: 사람 이미지는 숨기고 기존 고치(cocoon) 이미지를 바로 표시
   if (elOpeningCocoonGroup) { elOpeningCocoonGroup.classList.add('hidden'); }
-  if (elOpeningStep3CocoonGroup) { elOpeningStep3CocoonGroup.classList.add('hidden'); }
+  if (elOpeningStep3CocoonGroup) { elOpeningStep3CocoonGroup.classList.remove('hidden'); }
   if (elOpeningText) elOpeningText.innerHTML = "";
   if (elOpeningChoiceGroup) { elOpeningChoiceGroup.classList.remove('visible'); elOpeningChoiceGroup.classList.add('hidden'); }
   if (elOpeningNextGroup) { elOpeningNextGroup.classList.add('hidden'); elOpeningNextGroup.classList.remove('visible'); }
 
-  // 🌟 페이지가 넘어가는 연출이 끝나는 즉시(2초 대기 없이 바로) 타이핑이 시작되도록 수정
-  typeWriterText(elOpeningText, "안녕하세요?<br>지금, 걱정 없는 삶을 살아가고 있나요?", function() {
+  typeWriterText(elOpeningText, "안녕하세요, 오늘은 이곳에서<br>당신의 마음 깊은 곳에 묻어둔 고치를<br>꺼내보려 합니다.", function() {
     if (btnOpeningNext) btnOpeningNext.innerHTML = "다음";
     if (elOpeningNextGroup) { elOpeningNextGroup.classList.remove('hidden'); elOpeningNextGroup.classList.add('visible'); }
   });
@@ -878,62 +837,8 @@ function resetOpeningFlow() {
 
 if (btnOpeningNext) {
   btnOpeningNext.onclick = function() {
-    if (openingCurrentStep === 1) {
-      openingCurrentStep = 2;
-      // 🌟 [수정]: 2단계에서는 사람 이미지만 보이고 고치 이미지는 확실히 숨깁니다.
-      if (elOpeningCocoonGroup) { elOpeningCocoonGroup.classList.remove('hidden'); }
-      if (elOpeningStep3CocoonGroup) { elOpeningStep3CocoonGroup.classList.add('hidden'); }
-      if (elOpeningNextGroup) { elOpeningNextGroup.classList.remove('visible'); elOpeningNextGroup.classList.add('hidden'); }
-      typeWriterText(elOpeningText, "꺼내어 보이지 못한 채,<br>응어리진 무언가... 쉽게 털어놓지 못할 것도 있겠지요.", function() {
-        btnOpeningNext.innerHTML = "다음";
-        if (elOpeningNextGroup) { elOpeningNextGroup.classList.remove('hidden'); elOpeningNextGroup.classList.add('visible'); }
-      });
-      updateDevScreenBadge();
-    } else if (openingCurrentStep === 2) {
-      openingCurrentStep = 3;
-      // 🌟 3단계에서는 사람 이미지를 숨기고 고치 이미지만 표시합니다.
-      if (elOpeningCocoonGroup) { elOpeningCocoonGroup.classList.add('hidden'); }
-      if (elOpeningStep3CocoonGroup) { elOpeningStep3CocoonGroup.classList.remove('hidden'); }
-      if (elOpeningNextGroup) { elOpeningNextGroup.classList.remove('visible'); elOpeningNextGroup.classList.add('hidden'); }
-      typeWriterText(elOpeningText, "오늘 이곳에서,<br>당신의 마음 깊은 곳에 묻어둔 고치를<br>조심스레 꺼내어보려 합니다.", function() {
-        btnOpeningNext.innerHTML = "다음";
-        if (elOpeningNextGroup) { elOpeningNextGroup.classList.remove('hidden'); elOpeningNextGroup.classList.add('visible'); }
-      });
-      updateDevScreenBadge();
-    } else if (openingCurrentStep === 3) {
-      currentStepIdx = 0;
-      showScreen('screen-survey');
-    }
-  };
-}
-
-function initTop7BridgeScreen() {
-  clearTimeout(top7BridgeTypeTimer);
-  var textEl = document.getElementById('top7-bridge-text');
-  var nextGroup = document.getElementById('top7-bridge-next-group');
-  var btnNext = document.getElementById('btn-top7-bridge-next');
-
-  if (!textEl || !nextGroup) return;
-  textEl.innerHTML = "";
-  nextGroup.classList.add('hidden');
-  nextGroup.classList.remove('visible');
-
-  typeWriterText(textEl, "그렇군요.<br>다른 사람들은 어떤 것을 선택했을까요?", function() {
-    if (btnNext) btnNext.innerHTML = "다음";
-    nextGroup.classList.remove('hidden');
-    nextGroup.classList.add('visible');
-  });
-}
-
-var btnTop7BridgeNext = document.getElementById('btn-top7-bridge-next');
-if (btnTop7BridgeNext) {
-  btnTop7BridgeNext.onclick = function() {
-    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
-      try {
-        DeviceOrientationEvent.requestPermission().catch(function() {});
-      } catch (e) {}
-    }
-    showScreen('screen-survey-concern-top7');
+    currentStepIdx = 0;
+    showScreen('screen-survey');
   };
 }
 
@@ -1303,7 +1208,7 @@ if (btnSurveyNext) {
 
 if (btnSurveyPrev) {
   btnSurveyPrev.onclick = function() {
-    if (currentStepIdx === 2) showScreen('screen-survey-concern-top7');
+    if (currentStepIdx === 2) showScreen('screen-survey-concern-reason');
     else if (currentStepIdx === 1) { currentStepIdx = 0; renderSurveyStep(); }
   };
 }
@@ -1449,108 +1354,13 @@ if (inputConcernReason) {
 if (btnConcernReasonNext) {
   btnConcernReasonNext.onclick = function() { 
     if (userSelections.concern_reason && userSelections.concern_reason.trim().length > 0) {
-      showScreen('screen-top7-bridge'); 
+      currentStepIdx = 2;
+      showScreen('screen-survey'); 
     }
   };
 }
 if (btnConcernReasonPrev) {
   btnConcernReasonPrev.onclick = function() { showScreen('screen-survey-core-concern'); };
-}
-
-// 🌟 [실제 데이터 집계]: Supabase butterflies 테이블 및 현재 유저 q2 선택 항목 취합 후 상위 n개(최대 5개) 동적 생성
-async function fetchTopKeywordsData() {
-  try {
-    var client = getSupabaseClient();
-    var freqMap = {};
-    var totalCount = 0;
-
-    // 1. 현재 세션 사용자가 고른 q2 고민 먼저 반영
-    var currentSelections = [].concat(userSelections.q2 || []);
-    if (userSelections.q2_custom && userSelections.q2_custom.trim()) {
-      var c = userSelections.q2_custom.trim();
-      if (currentSelections.indexOf(c) === -1) currentSelections.push(c);
-    }
-    currentSelections.forEach(function(k) {
-      if (!k) return;
-      freqMap[k] = (freqMap[k] || 0) + 1;
-      totalCount++;
-    });
-
-    // 2. Supabase DB에서 누적된 사용자의 q2 데이터 취합
-    if (client) {
-      var { data, error } = await client.from('butterflies').select('q2').order('id', { ascending: false }).limit(500);
-      if (!error && Array.isArray(data)) {
-        data.forEach(function(row) {
-          if (Array.isArray(row.q2)) {
-            row.q2.forEach(function(k) {
-              if (!k) return;
-              freqMap[k] = (freqMap[k] || 0) + 1;
-              totalCount++;
-            });
-          }
-        });
-      }
-    }
-
-    var sortedKeywords = Object.keys(freqMap).map(function(k) {
-      return { keyword: k, count: freqMap[k] };
-    }).sort(function(a, b) {
-      return b.count - a.count;
-    });
-
-    // 데이터가 아예 없을 경우 기존 폴백 반환
-    if (sortedKeywords.length === 0 || totalCount === 0) {
-      return top7KeywordData;
-    }
-
-    // 🌟 [동적 개수 생성]: 데이터가 5개 미만이면 존재하는 개수만큼만, 5개 이상이면 상위 5개만 추출
-    var targetCount = Math.min(5, sortedKeywords.length);
-    var resultList = [];
-
-    for (var i = 0; i < targetCount; i++) {
-      var item = sortedKeywords[i];
-      var tmpl = top7StyleTemplate[i] || top7StyleTemplate[top7StyleTemplate.length - 1];
-      var pct = ((item.count / totalCount) * 100).toFixed(1) + "%";
-
-      resultList.push({
-        rank: i + 1,
-        keyword: item.keyword,
-        percent: pct,
-        radius: tmpl.radius,
-        fill: tmpl.fill,
-        textColor: tmpl.textColor,
-        subColor: tmpl.subColor
-      });
-    }
-
-    return resultList;
-  } catch (err) {
-    console.warn("키워드 집계 중 오류 발생, 기본값 사용:", err);
-    return top7KeywordData;
-  }
-}
-
-function updateTop7PickedSubtitle() {
-  var subtitleEl = document.getElementById('top7-user-picked-subtitle');
-  if (subtitleEl) {
-    var pickedKeyword = userSelections.core_concern || "완벽주의 강박";
-    subtitleEl.innerText = "당신이 고른 키워드 : " + pickedKeyword;
-  }
-}
-
-var btnConcernTop7Next = document.getElementById('btn-concern-top7-next');
-if (btnConcernTop7Next) {
-  btnConcernTop7Next.onclick = function() {
-    currentStepIdx = 2;
-    showScreen('screen-survey');
-  };
-}
-
-var btnConcernTop7Prev = document.getElementById('btn-concern-top7-prev');
-if (btnConcernTop7Prev) {
-  btnConcernTop7Prev.onclick = function() {
-    showScreen('screen-top7-bridge');
-  };
 }
 
 window.saveButterflyToSupabase = function() {
@@ -2051,14 +1861,6 @@ window.addEventListener('resize', function() {
   var activeScreen = document.querySelector('.screen.active');
   if (activeScreen && activeScreen.id === 'screen-survey' && currentStepIdx === 2) {
     resizeBubblePhysicsCanvas();
-  } else if (activeScreen && activeScreen.id === 'screen-survey-concern-top7') {
-    var top7Container = document.getElementById('top7-physics-container');
-    var top7Canvas = document.getElementById('top7-physics-canvas');
-    if (top7Container && top7Canvas) {
-      var rect = top7Container.getBoundingClientRect();
-      top7Canvas.width = rect.width || window.innerWidth;
-      top7Canvas.height = top7Container.clientHeight || rect.height || (window.innerHeight - 240);
-    }
   } else if (activeScreen && isCoverWaveAllowed(activeScreen.id)) {
     resizeCoverWaveCanvas();
   }
