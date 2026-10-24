@@ -419,8 +419,8 @@ function updateMotion(b, dt, time) {
               b.state = 'flying';
               _vDir.subVectors(handTarget3D, b.group.position);
               _vDir.z = 0; 
-              _vDir.normalize().multiplyScalar(0.10);
-              b.velocity.lerp(_vDir, 0.06); 
+              _vDir.normalize().multiplyScalar(0.16);
+              b.velocity.lerp(_vDir, 0.10); 
                   
               _vTargetPos.copy(b.group.position).add(b.velocity);
               dummyObj.position.copy(b.group.position);
@@ -592,7 +592,7 @@ function updateMotion(b, dt, time) {
 
   let maxSpeed = 0.20;
   if (b.isSpecialLanding) {
-      maxSpeed = (b.specialState === 'leaving') ? 0.15 : 0.12;
+      maxSpeed = (b.specialState === 'leaving') ? 0.15 : 0.18;
   } else if (b.isCeremony) {
       maxSpeed = 0.24;
   } else if (isFollowing && interactionMode === 'scatter') {
@@ -711,7 +711,7 @@ function animate() {
                       isCreatingSpecialButterfly = false;
                   }
                   landOneGestureTimer = null;
-              }, 2000);
+              }, 800);
           }
       }
   } else {
