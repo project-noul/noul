@@ -52,11 +52,19 @@ var postConcernTypeTimer = null;
 var flightSafetyTimer = null;
 var typeTimer = null;
 var guideTypeTimer = null;
+var guideMoveTimer = null;
+var guideRevealTimer = null;
 var surveyTitleTypeTimer = null;
 var coreConcernTypeTimer = null;
+var coreConcernMoveTimer = null;
+var coreConcernRevealTimer = null;
 var openingDelayTimer = null;
 var auxTimers = [];
 var activeTypeSkipCleanUp = null;
+var activeGuideSkipCleanUp = null;
+var activeSurveyTitleSkipCleanUp = null;
+var activeCoreConcernSkipCleanUp = null;
+var activeReasonSkipCleanUp = null;
 
 var lastSavedButterflyId = null;
 var currentSavePromise = null;
@@ -73,10 +81,30 @@ function clearAllTimers() {
     activeTypeSkipCleanUp();
     activeTypeSkipCleanUp = null;
   }
+  if (typeof activeGuideSkipCleanUp === 'function') {
+    activeGuideSkipCleanUp();
+    activeGuideSkipCleanUp = null;
+  }
+  if (typeof activeSurveyTitleSkipCleanUp === 'function') {
+    activeSurveyTitleSkipCleanUp();
+    activeSurveyTitleSkipCleanUp = null;
+  }
+  if (typeof activeCoreConcernSkipCleanUp === 'function') {
+    activeCoreConcernSkipCleanUp();
+    activeCoreConcernSkipCleanUp = null;
+  }
+  if (typeof activeReasonSkipCleanUp === 'function') {
+    activeReasonSkipCleanUp();
+    activeReasonSkipCleanUp = null;
+  }
   clearTimeout(typeTimer);
   clearTimeout(guideTypeTimer);
+  clearTimeout(guideMoveTimer);
+  clearTimeout(guideRevealTimer);
   clearTimeout(surveyTitleTypeTimer);
   clearTimeout(coreConcernTypeTimer);
+  clearTimeout(coreConcernMoveTimer);
+  clearTimeout(coreConcernRevealTimer);
   clearTimeout(reasonTypeTimer);
   clearTimeout(top7BridgeTypeTimer);
   clearTimeout(openingDelayTimer);
@@ -331,7 +359,7 @@ function startAnswerShowcaseSequence() {
           
           var flyLabel = document.getElementById('preview-fly-label');
           if (flyLabel) {
-            flyLabel.innerHTML = "화면 아무 곳을<br>1초간 길게 눌러 기를 모아주세요.";
+            flyLabel.innerHTML = "화면 아무 곳을<br>1초간 가만히 길게 눌러주세요.";
           }
 
           showScreen('screen-preview');
@@ -362,7 +390,7 @@ function playCompleteScreenSequence() {
   
   var rawName = (userSelections.q7_name && userSelections.q7_name.trim()) ? userSelections.q7_name.trim() : "나비";
   var safeName = escapeHtmlSafe(rawName);
-  typeWriterText(titleEl, "하늘로 '" + safeName + "'이(가)<br>너울 속으로 날아올랐습니다.<br><br>지금, 스크린을 확인해 보세요.", function() {
+  typeWriterText(titleEl, "하늘로 '" + safeName + "'이(가)<br>날아올랐습니다.<br><br>컴퓨터 웹캠으로 나비와 교감해 보세요.", function() {
     if (btnNext) btnNext.innerHTML = "다음";
     if (nextGroup) {
       nextGroup.classList.remove('hidden');
@@ -607,7 +635,7 @@ document.addEventListener('click', function(e) {
       
       var flyLabel = document.getElementById('preview-fly-label');
       if (flyLabel) {
-        flyLabel.innerHTML = "화면 아무 곳을<br>1초간 길게 눌러 기를 모아주세요.";
+        flyLabel.innerHTML = "화면 아무 곳을<br>1초간 가만히 길게 눌러주세요.";
       }
       
       showScreen('screen-preview'); 
@@ -844,19 +872,59 @@ if (btnOpeningNext) {
 
 function initConcernReasonScreen() {
   clearTimeout(reasonTypeTimer);
+  if (typeof activeReasonSkipCleanUp === 'function') {
+    activeReasonSkipCleanUp();
+    activeReasonSkipCleanUp = null;
+  }
   var pickedKeyword = userSelections.core_concern || "완벽주의 강박";
   if (elConcernReasonKeywordDisplay) elConcernReasonKeywordDisplay.innerText = pickedKeyword;
   if (elConcernReasonTitle) elConcernReasonTitle.innerHTML = "";
 
-  var tokens = "이것을 선택한 이유는 무엇인가요?".match(/(<[^>]+>|[^<])/g) || [];
+  var fullReasonTitle = "이것을 선택한 이유는 무엇인가요?";
+  var tokens = fullReasonTitle.match(/(<[^>]+>|[^<])/g) || [];
   var idx = 0, cur = "";
+  var isReasonCompleted = false;
+  var reasonScreenEl = document.getElementById('screen-survey-concern-reason') || document;
+
+  function finishReasonImmediately(e) {
+    if (e && e.target && e.target.closest('button, a, input, textarea, label, #dev-quick-navigator')) {
+      return;
+    }
+    if (isReasonCompleted) return;
+    isReasonCompleted = true;
+    clearTimeout(reasonTypeTimer);
+    cleanupReasonSkipListeners();
+    if (elConcernReasonTitle) elConcernReasonTitle.innerHTML = fullReasonTitle;
+    if (elConcernReasonKeywordDisplay) elConcernReasonKeywordDisplay.style.opacity = '1';
+  }
+
+  function cleanupReasonSkipListeners() {
+    reasonScreenEl.removeEventListener('click', finishReasonImmediately);
+    reasonScreenEl.removeEventListener('touchstart', finishReasonImmediately);
+    if (activeReasonSkipCleanUp === cleanupReasonSkipListeners) {
+      activeReasonSkipCleanUp = null;
+    }
+  }
+
+  activeReasonSkipCleanUp = cleanupReasonSkipListeners;
+
+  setTimeout(function() {
+    if (!isReasonCompleted) {
+      reasonScreenEl.addEventListener('click', finishReasonImmediately);
+      reasonScreenEl.addEventListener('touchstart', finishReasonImmediately, { passive: true });
+    }
+  }, 50);
+
   (function typeReasonChar() {
+    if (isReasonCompleted) return;
     if (idx < tokens.length) {
       var char = tokens[idx]; cur += char;
       if (elConcernReasonTitle) elConcernReasonTitle.innerHTML = cur;
       idx++;
       reasonTypeTimer = setTimeout(typeReasonChar, char.startsWith('<') ? 0 : (char === '?' || char === '.' ? 320 : 70));
     } else {
+      isReasonCompleted = true;
+      cleanupReasonSkipListeners();
       registerAuxTimer(function() {
         if (elConcernReasonKeywordDisplay) elConcernReasonKeywordDisplay.style.opacity = '1';
       }, 200);
@@ -927,6 +995,12 @@ var guideBottomDock = document.getElementById('guide-bottom-dock');
 
 function startCaptureGuideCinematicFlow() {
   clearTimeout(guideTypeTimer);
+  clearTimeout(guideMoveTimer);
+  clearTimeout(guideRevealTimer);
+  if (typeof activeGuideSkipCleanUp === 'function') {
+    activeGuideSkipCleanUp();
+    activeGuideSkipCleanUp = null;
+  }
   var introMessage = "고치에서 깨어날 당신의 나비는<br>어떤 모습인가요?";
 
   // 🌟 이미 한 번 연출을 본 뒤 '다시 촬영' 등으로 돌아온 경우 애니메이션 없이 즉시 전체 페이지 표시
@@ -946,8 +1020,44 @@ function startCaptureGuideCinematicFlow() {
 
   var tokens = introMessage.match(/(<[^>]+>|[^<])/g) || [];
   var idx = 0, curText = "";
+  var isGuideCompleted = false;
+  var guideScreenEl = document.getElementById('screen-capture-guide') || document;
+
+  function finishGuideImmediately(e) {
+    if (e && e.target && e.target.closest('button, a, input, textarea, label, #dev-quick-navigator')) {
+      return;
+    }
+    if (isGuideCompleted) return;
+    isGuideCompleted = true;
+    clearTimeout(guideTypeTimer);
+    clearTimeout(guideMoveTimer);
+    clearTimeout(guideRevealTimer);
+    cleanupGuideSkipListeners();
+    if (guideAnimatedTitle) guideAnimatedTitle.innerHTML = introMessage;
+    if (guideTitleWrap) guideTitleWrap.classList.add('moved-to-top');
+    if (guideCenterCard) guideCenterCard.classList.add('revealed');
+    if (guideBottomDock) guideBottomDock.classList.add('revealed');
+  }
+
+  function cleanupGuideSkipListeners() {
+    guideScreenEl.removeEventListener('click', finishGuideImmediately);
+    guideScreenEl.removeEventListener('touchstart', finishGuideImmediately);
+    if (activeGuideSkipCleanUp === cleanupGuideSkipListeners) {
+      activeGuideSkipCleanUp = null;
+    }
+  }
+
+  activeGuideSkipCleanUp = cleanupGuideSkipListeners;
+
+  setTimeout(function() {
+    if (!isGuideCompleted) {
+      guideScreenEl.addEventListener('click', finishGuideImmediately);
+      guideScreenEl.addEventListener('touchstart', finishGuideImmediately, { passive: true });
+    }
+  }, 50);
 
   (function typeNext() {
+    if (isGuideCompleted) return;
     if (idx < tokens.length) {
       var char = tokens[idx];
       curText += char;
@@ -956,9 +1066,13 @@ function startCaptureGuideCinematicFlow() {
       var delay = (char.startsWith('<') ? 0 : (char === '?' || char === '.' ? 400 : 80));
       guideTypeTimer = setTimeout(typeNext, delay);
     } else {
-      registerAuxTimer(function() {
+      guideMoveTimer = setTimeout(function() {
+        if (isGuideCompleted) return;
         if (guideTitleWrap) guideTitleWrap.classList.add('moved-to-top');
-        registerAuxTimer(function() {
+        guideRevealTimer = setTimeout(function() {
+          if (isGuideCompleted) return;
+          isGuideCompleted = true;
+          cleanupGuideSkipListeners();
           if (guideCenterCard) guideCenterCard.classList.add('revealed');
           if (guideBottomDock) guideBottomDock.classList.add('revealed');
         }, 450);
@@ -1013,12 +1127,48 @@ var btnCustomKeywordClear = document.getElementById('btn-custom-keyword-clear');
 
 function typeWriterSurveyTitle(titleHtml, onComplete) {
   clearTimeout(surveyTitleTypeTimer);
+  if (typeof activeSurveyTitleSkipCleanUp === 'function') {
+    activeSurveyTitleSkipCleanUp();
+    activeSurveyTitleSkipCleanUp = null;
+  }
   if (!elTitle) return;
   elTitle.innerHTML = "";
   var tokens = titleHtml.match(/(<[^>]+>|[^<])/g) || [];
   var idx = 0, currentContent = "";
+  var isSurveyTitleCompleted = false;
+  var surveyScreenEl = document.getElementById('screen-survey') || document;
+
+  function finishSurveyTitleImmediately(e) {
+    if (e && e.target && e.target.closest('button, a, input, textarea, label, #dev-quick-navigator')) {
+      return;
+    }
+    if (isSurveyTitleCompleted) return;
+    isSurveyTitleCompleted = true;
+    clearTimeout(surveyTitleTypeTimer);
+    cleanupSurveyTitleSkipListeners();
+    elTitle.innerHTML = titleHtml;
+    if (onComplete) onComplete();
+  }
+
+  function cleanupSurveyTitleSkipListeners() {
+    surveyScreenEl.removeEventListener('click', finishSurveyTitleImmediately);
+    surveyScreenEl.removeEventListener('touchstart', finishSurveyTitleImmediately);
+    if (activeSurveyTitleSkipCleanUp === cleanupSurveyTitleSkipListeners) {
+      activeSurveyTitleSkipCleanUp = null;
+    }
+  }
+
+  activeSurveyTitleSkipCleanUp = cleanupSurveyTitleSkipListeners;
+
+  setTimeout(function() {
+    if (!isSurveyTitleCompleted) {
+      surveyScreenEl.addEventListener('click', finishSurveyTitleImmediately);
+      surveyScreenEl.addEventListener('touchstart', finishSurveyTitleImmediately, { passive: true });
+    }
+  }, 50);
 
   (function nextChar() {
+    if (isSurveyTitleCompleted) return;
     if (idx < tokens.length) {
       var char = tokens[idx];
       currentContent += char;
@@ -1026,7 +1176,11 @@ function typeWriterSurveyTitle(titleHtml, onComplete) {
       idx++;
       var delay = (char.startsWith('<') ? 0 : (char === '?' || char === '.' ? 350 : 80));
       surveyTitleTypeTimer = setTimeout(nextChar, delay);
-    } else if (onComplete) registerAuxTimer(onComplete, 150);
+    } else {
+      isSurveyTitleCompleted = true;
+      cleanupSurveyTitleSkipListeners();
+      if (onComplete) registerAuxTimer(onComplete, 150);
+    }
   })();
 }
 
@@ -1231,6 +1385,12 @@ window.addEventListener('mouseup', function() {
 
 function initCoreConcernScreen() {
   clearTimeout(coreConcernTypeTimer);
+  clearTimeout(coreConcernMoveTimer);
+  clearTimeout(coreConcernRevealTimer);
+  if (typeof activeCoreConcernSkipCleanUp === 'function') {
+    activeCoreConcernSkipCleanUp();
+    activeCoreConcernSkipCleanUp = null;
+  }
   coreConcernIsMouseDown = false;
   if (elCoreConcernTitleWrap) elCoreConcernTitleWrap.classList.remove('moved-to-top');
   if (elCoreConcernTitle) elCoreConcernTitle.innerHTML = "";
@@ -1302,20 +1462,62 @@ function initCoreConcernScreen() {
     };
   }
 
-  var tokens = "가장 꺼내기 힘든 것은<br>무엇인가요?".match(/(<[^>]+>|[^<])/g) || [];
+  var fullCoreMessage = "가장 꺼내기 힘든 것은<br>무엇인가요?";
+  var tokens = fullCoreMessage.match(/(<[^>]+>|[^<])/g) || [];
   var idx = 0, curText = "";
+  var isCoreCompleted = false;
+  var coreScreenEl = document.getElementById('screen-survey-core-concern') || document;
+
+  function finishCoreImmediately(e) {
+    if (e && e.target && e.target.closest('button, a, input, textarea, label, #dev-quick-navigator')) {
+      return;
+    }
+    if (isCoreCompleted) return;
+    isCoreCompleted = true;
+    clearTimeout(coreConcernTypeTimer);
+    clearTimeout(coreConcernMoveTimer);
+    clearTimeout(coreConcernRevealTimer);
+    cleanupCoreSkipListeners();
+    if (elCoreConcernTitle) elCoreConcernTitle.innerHTML = fullCoreMessage;
+    if (elCoreConcernTitleWrap) elCoreConcernTitleWrap.classList.add('moved-to-top');
+    if (elCoreConcernSubGuide) elCoreConcernSubGuide.style.opacity = '1';
+    if (elCoreConcernContainer) elCoreConcernContainer.classList.add('revealed');
+  }
+
+  function cleanupCoreSkipListeners() {
+    coreScreenEl.removeEventListener('click', finishCoreImmediately);
+    coreScreenEl.removeEventListener('touchstart', finishCoreImmediately);
+    if (activeCoreConcernSkipCleanUp === cleanupCoreSkipListeners) {
+      activeCoreConcernSkipCleanUp = null;
+    }
+  }
+
+  activeCoreConcernSkipCleanUp = cleanupCoreSkipListeners;
+
+  setTimeout(function() {
+    if (!isCoreCompleted) {
+      coreScreenEl.addEventListener('click', finishCoreImmediately);
+      coreScreenEl.addEventListener('touchstart', finishCoreImmediately, { passive: true });
+    }
+  }, 50);
+
   (function typeNextCoreChar() {
+    if (isCoreCompleted) return;
     if (idx < tokens.length) {
       var char = tokens[idx]; curText += char;
       if (elCoreConcernTitle) elCoreConcernTitle.innerHTML = curText;
       idx++;
       coreConcernTypeTimer = setTimeout(typeNextCoreChar, char.startsWith('<') ? 0 : (char === '?' || char === '.' ? 350 : 75));
     } else {
-      registerAuxTimer(function() {
+      coreConcernMoveTimer = setTimeout(function() {
+        if (isCoreCompleted) return;
         if (elCoreConcernTitleWrap) elCoreConcernTitleWrap.classList.add('moved-to-top');
-        registerAuxTimer(function() { 
+        coreConcernRevealTimer = setTimeout(function() {
+          if (isCoreCompleted) return;
+          isCoreCompleted = true;
+          cleanupCoreSkipListeners();
           if (elCoreConcernSubGuide) elCoreConcernSubGuide.style.opacity = '1';
-          if (elCoreConcernContainer) elCoreConcernContainer.classList.add('revealed'); 
+          if (elCoreConcernContainer) elCoreConcernContainer.classList.add('revealed');
         }, 450);
       }, 350);
     }

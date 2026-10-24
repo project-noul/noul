@@ -185,7 +185,7 @@ function initLoading3DScene() {
   
   loadingGroup = new THREE.Group();
   loadingGroup.rotation.set(1.12, 2.55, -0.62);
-  loadingGroup.position.set(-0.08, -0.35, 0);
+  loadingGroup.position.set(-0.08, -0.85, 0);
 
   var currentGroup = loadingGroup;
   loadButterflyModel(currentGroup, selectedButterflyShape, selectedAntennaType, { matL: whiteMat, matR: whiteMat }, whiteMat, 0.45, function(l, r) {
@@ -225,10 +225,10 @@ function initLoading3DScene() {
       loadingWingR.rotation.set(uR.baseRotX || 0, (uR.baseRotY || 0) - flap, uR.baseRotZ || 0); 
     }
 
-    // 🌟 3. 자세 각성: 웅크리고 기울어져 있던 각도에서 점차 중심을 잡고 우아하게 떠오름
+    // 🌟 3. 자세 각성: 웅크리고 기울어져 있던 각도에서 점차 화면 정중앙을 잡고 우아하게 떠오름
     if (loadingGroup) {
       var baseX = -0.08 * (1.0 - smoothProg * 0.85);
-      var baseY = -0.35 + (0.28 * smoothProg);
+      var baseY = -0.85 + (0.30 * smoothProg);
       var baseRotX = 1.12 - (0.34 * smoothProg);
       var baseRotY = 2.55 + (0.52 * smoothProg);
       var baseRotZ = -0.62 + (0.42 * smoothProg);
@@ -442,6 +442,7 @@ function stopFullButterflyViewer() {
     animFrameId = null;
   }
   unbindPreviewWindowEvents();
+  isFlyingAway = false;
   resetChargeState();
   if (fullRenderer) {
     disposeThreeRenderer(fullRenderer);
@@ -714,7 +715,23 @@ function updateChargeUIAndCamera(progress, currentChargeSec) {
   if (fullCamera) fullCamera.position.z = 8.8 - (2.6 * progress);
 
   if (headerUI) headerUI.style.opacity = Math.max(0, 1.0 - Math.min(1.0, currentChargeSec / 1.5));
-  if (footerUI) { footerUI.style.display = 'flex'; footerUI.style.opacity = '1'; }
+  if (footerUI) {
+    footerUI.style.display = 'flex';
+    footerUI.style.opacity = '1';
+    if (progress >= 1.0) {
+      footerUI.style.position = 'absolute';
+      footerUI.style.top = 'max(3.5rem, calc(2.5rem + env(safe-area-inset-top, 0px)))';
+      footerUI.style.left = '0';
+      footerUI.style.right = '0';
+      footerUI.style.bottom = 'auto';
+    } else {
+      footerUI.style.position = '';
+      footerUI.style.top = '';
+      footerUI.style.left = '';
+      footerUI.style.right = '';
+      footerUI.style.bottom = '';
+    }
+  }
 
   var flyLabel = document.getElementById('preview-fly-label');
   if (flyLabel) {
@@ -746,7 +763,18 @@ function resetChargeState() {
   if (innerFill) { innerFill.style.width = '22px'; innerFill.style.height = '22px'; }
   if (fullCamera) fullCamera.position.z = 8.8;
   if (headerUI) headerUI.style.opacity = 1.0;
-  if (footerUI && !isFlyingAway) { footerUI.style.display = 'flex'; footerUI.style.opacity = 1.0; footerUI.style.pointerEvents = 'none'; }
+  if (footerUI) {
+    footerUI.style.position = '';
+    footerUI.style.top = '';
+    footerUI.style.left = '';
+    footerUI.style.right = '';
+    footerUI.style.bottom = '';
+    if (!isFlyingAway) {
+      footerUI.style.display = 'flex';
+      footerUI.style.opacity = 1.0;
+      footerUI.style.pointerEvents = 'none';
+    }
+  }
 
   var flyLabel = document.getElementById('preview-fly-label');
   if (flyLabel) {
@@ -790,7 +818,16 @@ function bindInteractiveEvents(targetEl) {
       safeTriggerDBSave();
 
       var footerUI = document.getElementById('preview-footer-ui');
-      if (footerUI) { footerUI.style.setProperty('display', 'none', 'important'); footerUI.style.opacity = '0'; footerUI.style.pointerEvents = 'none'; }
+      if (footerUI) {
+        footerUI.style.position = '';
+        footerUI.style.top = '';
+        footerUI.style.left = '';
+        footerUI.style.right = '';
+        footerUI.style.bottom = '';
+        footerUI.style.setProperty('display', 'none', 'important');
+        footerUI.style.opacity = '0';
+        footerUI.style.pointerEvents = 'none';
+      }
       clearTimeout(flightSafetyTimer);
       flightSafetyTimer = setTimeout(function() {
         if (!isFlyingTransitionTriggered) {
