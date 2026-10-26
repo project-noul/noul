@@ -198,7 +198,7 @@
             <svg class="w-4 h-4 text-neutral-400 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35m1.85-5.15a7 7 0 11-14 0 7 7 0 0114 0z"></path>
             </svg>
-            <input type="text" id="gallery-search-input" placeholder="나비 이름을 검색해보세요" autocomplete="off" spellcheck="false">
+            <input type="text" id="gallery-search-input" placeholder="이곳에 작성하기" autocomplete="off" spellcheck="false">
           </div>
         </div>
 
@@ -391,25 +391,25 @@
                      class="w-32 h-32 rounded-xl object-contain border border-white/20 shadow-lg p-1 bg-black" />
               </div>
               <p class="guide-step-desc">
-                속마음 고민을 나눈 뒤, 도안을 촬영합니다.
+                속마음 고민을 나눕니다.
               </p>
             </div>
           </div>
 
-          <!-- 2단계: COLORING -->
+          <!-- 2단계: COLORING (택 1) -->
           <div class="guide-step-item">
             <div class="guide-step-left">
               <div class="guide-step-circle">2</div>
               <div class="guide-step-line"></div>
             </div>
             <div class="guide-step-right pb-10">
-              <h3 class="guide-step-title">COLORING</h3>
+              <h3 class="guide-step-title">COLORING (택 1)</h3>
 
-              <!-- 방법 1. 이미지 삽입 (선택) -->
+              <!-- 방법 1. 이미지 삽입 (추천) -->
               <div class="space-y-2 mt-2">
-                <p class="text-[13px] font-bold text-white tracking-tight">방법1. 이미지 삽입 (선택)</p>
+                <p class="text-[13px] font-bold text-white tracking-tight">방법1. 이미지 삽입 (추천)</p>
                 <p class="text-xs text-neutral-300 font-normal leading-relaxed">
-                  도안 채색 단계를 건너뛰고 QR 코드 스캔 후, 입장합니다.
+                  이미지를 선택합니다.
                 </p>
               </div>
 
@@ -483,7 +483,7 @@
                 </div>
 
                 <div class="space-y-1 pt-1">
-                  <p class="text-xs text-neutral-300 font-normal leading-relaxed">도안을 채색하세요.</p>
+                  <p class="text-xs text-neutral-300 font-normal leading-relaxed">도안을 채색하고 촬영하세요.</p>
                 </div>
               </div>
 
@@ -599,7 +599,7 @@
         
         <div id="survey-custom-input-anchor" class="custom-anchor-hidden w-full flex justify-center mt-3">
           <div id="custom-keyword-single-bar" class="custom-keyword-single-bar">
-            <input id="input-custom-keyword" type="text" maxlength="15" placeholder="직접 입력" autocomplete="off" spellcheck="false">
+            <input id="input-custom-keyword" type="text" maxlength="15" placeholder="이곳에 작성하기" autocomplete="off" spellcheck="false">
             <button id="btn-custom-keyword-clear" type="button" class="custom-bar-clear-btn hidden" aria-label="입력 지우기">
               ✕
             </button>
@@ -619,7 +619,7 @@
           <div id="selected-concern-chips" class="selected-concern-chips-wrap"></div>
           <p class="text-xs text-neutral-400 mb-2 font-normal text-left w-full pl-1 tracking-tight">작성한 내용은 전시에 공개됩니다.</p>
           <div class="glass-input-card-v2" style="height: 195px;">
-            <textarea id="input-q6-memo" maxlength="50" placeholder="자유롭게 입력해주세요."></textarea>
+            <textarea id="input-q6-memo" maxlength="50" placeholder="이곳에 작성하기"></textarea>
           </div>
           <div class="w-full flex justify-end pt-2 pr-1">
             <span id="memo-counter" class="text-xs text-neutral-400 font-mono tracking-normal">0/50</span>
@@ -632,7 +632,7 @@
         <div class="w-full max-w-[340px] flex flex-col">
           <p class="text-xs text-neutral-400 mb-2 font-normal text-left w-full pl-1 tracking-tight">작성한 이름은 전시에 공개됩니다. 익명으로 적어주세요.</p>
           <div class="glass-input-card-v2" style="height: 76px; justify-content: center; padding: 1.15rem 1.35rem !important;">
-            <input id="input-q7-name" type="text" maxlength="10" placeholder="예: 윤슬, 쉼표, 칼퇴, 다정, 시온, 바람..." autocomplete="off" spellcheck="false">
+            <input id="input-q7-name" type="text" maxlength="10" placeholder="이곳에 작성하기" autocomplete="off" spellcheck="false">
           </div>
           <div class="w-full flex justify-end pt-2 pr-1">
             <span id="char-counter" class="text-xs text-neutral-400 font-mono tracking-normal">0/10</span>
@@ -705,7 +705,7 @@
           </div>
           <p class="text-xs text-neutral-400 mb-2 font-normal text-left w-full pl-1 tracking-tight">작성한 내용은 익명으로 전시에 공개됩니다.</p>
           <div class="glass-input-card-v2 w-full" style="height: 195px;">
-            <textarea id="input-concern-reason" maxlength="100" placeholder="항상 잘 해내야 한다는 마음이 앞서서요."></textarea>
+            <textarea id="input-concern-reason" maxlength="100" placeholder="이곳에 작성하기"></textarea>
           </div>
           <div class="w-full flex justify-end pt-2 pr-1">
             <span id="concern-reason-counter" class="text-xs text-neutral-400 font-mono tracking-normal">0/100</span>
@@ -974,11 +974,11 @@
       </div>
 
       <footer id="preview-footer-ui" class="w-full pb-6 flex flex-col items-center gap-2 z-10 pointer-events-none transition-opacity duration-300">
-        <div class="bounce-guide flex flex-col items-center opacity-60">
-          <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M5 15l7-7 7 7"></path>
+        <div class="bounce-guide flex flex-col items-center">
+          <svg class="w-7 h-7 text-white drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.6" d="M5 15l7-7 7 7"></path>
           </svg>
-          <span id="preview-fly-label" class="text-[11.5px] font-semibold text-neutral-300 tracking-tight mt-1 text-center leading-relaxed">화면 아무 곳을<br>1초간 가만히 길게 눌러주세요.</span>
+          <span id="preview-fly-label" class="text-[15px] sm:text-base font-extrabold text-white tracking-tight mt-1 text-center leading-relaxed drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">화면 아무 곳을<br>1초간 가만히 길게 눌러주세요.</span>
         </div>
       </footer>
     </section>

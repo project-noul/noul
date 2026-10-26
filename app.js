@@ -1107,6 +1107,71 @@ function getSupabaseClient() {
   return _supabaseClientInstance;
 }
 
+// --------------------------------------------------------------------------
+// 🌟 설문 문항 데이터, 키워드 순위 템플릿 및 칩 줄바꿈 계산 헬퍼
+// --------------------------------------------------------------------------
+var surveyQuestions = [
+  { title: "당신의 이름은 무엇인가요?", desc: "" },
+  {
+    title: "당신을 붙잡고 있는 것은 무엇인가요?",
+    desc: "(3개 이상 선택)",
+    category: "#마주친 마음의 고민",
+    options: [
+      "비교중독", "만성 피로", "텅 빈 잔고", "완벽주의 강박", "미래 막막함", "거절 공포", "지나간 후회", "가면 증후군", "스마트폰 중독", "결정 장애",
+      "눈치 보기", "벼락치기 습관", "타인 인정 욕구", "번아웃 무기력", "억지 미소", "취업 압박감", "수면 부족", "실패 공포증", "잦은 감정 기복", "뒤처짐 조급함",
+      "고립감과 외로움", "쓸데없는 잡생각", "꼰대와 갑질", "자책과 자기 비하", "억지 인연 유지", "학점·스펙 압박", "충동구매 후회", "시작의 두려움", "단톡방 알림 감옥", "과도한 책임감",
+      "부모님 잔소리", "과열된 머릿속", "애매한 재능", "만성 무기력", "타인의 무례함", "겉도는 관계", "질투와 열등감", "끝없는 미루기", "건강 악화", "타인의 오해",
+      "월세·생활비 압박", "도파민 중독", "좁아진 시야", "낮은 자존감", "겉만 번지르르함", "감정 쓰레기통 역할", "무리한 부탁", "고립된 혼밥", "흐려진 목표", "그냥 온갖 귀찮음"
+    ]
+  },
+  { title: "나에게, 그리고 우리에게 건넬<br>다정한 한마디를 적어주세요.", desc: "" }
+];
+
+function buildAdaptiveVerticalRows(items) {
+  var rows = [], i = 0;
+  while (i < items.length) {
+    var targetCount = 3;
+    var candidate = items.slice(i, i + targetCount);
+    if (candidate.reduce(function(s, w) { return s + w.length; }, 0) > 12 && candidate.length > 2) targetCount = 2;
+    var actualRow = items.slice(i, i + targetCount);
+    rows.push(actualRow);
+    i += actualRow.length;
+  }
+  return rows;
+}
+
+function calculateRowDistribution(totalCount) {
+  if (totalCount <= 0) return [];
+  if (totalCount <= 3) return [totalCount];
+  if (totalCount === 4) return [2, 2];
+  if (totalCount === 5) return [2, 3];
+  if (totalCount <= 10) {
+    var b3 = Math.floor(totalCount / 3), r3 = totalCount % 3;
+    return r3 === 0 ? [b3, b3, b3] : (r3 === 1 ? [b3, b3, b3 + 1] : [b3, b3 + 1, b3 + 1]);
+  }
+  var b5 = Math.floor(totalCount / 5), r5 = totalCount % 5, rows5 = [b5, b5, b5, b5, b5];
+  for (var r = 0; r < r5; r++) rows5[4 - r]++;
+  return rows5;
+}
+
+// 🌟 순위별 크기 및 스타일 사전 정의 템플릿 (1위~5위)
+var top7StyleTemplate = [
+  { rank: 1, radius: 108, fill: "#f8f8f8", textColor: "#111111", subColor: "#555555" },
+  { rank: 2, radius: 88, fill: "#1c1c1c", textColor: "#ffffff", subColor: "#a3a3a3" },
+  { rank: 3, radius: 82, fill: "#1c1c1c", textColor: "#ffffff", subColor: "#a3a3a3" },
+  { rank: 4, radius: 66, fill: "#1c1c1c", textColor: "#ffffff", subColor: "#a3a3a3" },
+  { rank: 5, radius: 62, fill: "#1c1c1c", textColor: "#ffffff", subColor: "#a3a3a3" }
+];
+
+// 기본 폴백 데이터 (DB가 비었거나 로딩 실패 시 사용)
+var top7KeywordData = [
+  { rank: 1, keyword: "완벽주의 강박", percent: "28.4%", radius: 108, fill: "#f8f8f8", textColor: "#111111", subColor: "#555555" },
+  { rank: 2, keyword: "비교중독", percent: "19.2%", radius: 88, fill: "#1c1c1c", textColor: "#ffffff", subColor: "#a3a3a3" },
+  { rank: 3, keyword: "미래 막막함", percent: "16.5%", radius: 82, fill: "#1c1c1c", textColor: "#ffffff", subColor: "#a3a3a3" },
+  { rank: 4, keyword: "수면 부족", percent: "12.1%", radius: 66, fill: "#1c1c1c", textColor: "#ffffff", subColor: "#a3a3a3" },
+  { rank: 5, keyword: "텅 빈 잔고", percent: "9.8%", radius: 62, fill: "#1c1c1c", textColor: "#ffffff", subColor: "#a3a3a3" }
+];
+
 var elTitle = document.getElementById('question-title');
 var elDesc = document.getElementById('question-desc');
 var elProgressBar = document.getElementById('progress-bar');
@@ -1322,7 +1387,11 @@ function validateSurveyStep() {
   if (currentStepIdx === 0) {
     isValid = !!(userSelections.q7_name && userSelections.q7_name.trim().length > 0);
   } else if (currentStepIdx === 1) {
-    isValid = (userSelections.q2 && userSelections.q2.length > 0) || (userSelections.q2_custom && userSelections.q2_custom.trim().length > 0);
+    var selectedCount = userSelections.q2 ? userSelections.q2.length : 0;
+    var customVal = (userSelections.q2_custom && userSelections.q2_custom.trim()) ? userSelections.q2_custom.trim() : "";
+    var hasUniqueCustom = customVal.length > 0 && (!userSelections.q2 || userSelections.q2.indexOf(customVal) === -1);
+    var totalSelected = selectedCount + (hasUniqueCustom ? 1 : 0);
+    isValid = totalSelected >= 3;
   } else if (currentStepIdx === 2) {
     isValid = !!(userSelections.q6_memo && userSelections.q6_memo.trim().length > 0);
   }
@@ -1422,15 +1491,16 @@ function initCoreConcernScreen() {
       (function() {
         var item = selectedItems[itemCursor];
         var btn = document.createElement('button');
-        btn.type = 'button'; btn.className = 'core-concern-text-btn'; btn.innerText = item;
-        btn.classList.add(userSelections.core_concern === item ? 'core-concern-selected' : 'core-concern-unselected');
+        btn.type = 'button'; btn.className = 'chip-base'; btn.innerText = item;
+        var isSelected = (userSelections.core_concern === item);
+        updateChipStyle(btn, isSelected);
 
         btn.onclick = function() {
           userSelections.core_concern = item;
-          elCoreConcernGrid.querySelectorAll('.core-concern-text-btn').forEach(function(b) {
-            b.classList.remove('core-concern-selected'); b.classList.add('core-concern-unselected');
+          elCoreConcernGrid.querySelectorAll('.chip-base').forEach(function(b) {
+            updateChipStyle(b, false);
           });
-          btn.classList.remove('core-concern-unselected'); btn.classList.add('core-concern-selected');
+          updateChipStyle(btn, true);
           if (btnCoreConcernNext) {
             btnCoreConcernNext.innerText = "다음으로";
             btnCoreConcernNext.disabled = false;
@@ -1982,7 +2052,7 @@ bindGalleryScrollWindEffect();
 
 var gallerySearchInput = document.getElementById('gallery-search-input');
 if (gallerySearchInput) {
-  gallerySearchInput.placeholder = "나비 이름을 검색해보세요";
+  gallerySearchInput.placeholder = "이곳에 작성하기";
   gallerySearchInput.oninput = function(e) { renderFilteredGallery(e.target.value); };
 }
 
@@ -1990,7 +2060,7 @@ async function initSpecimenGallery() {
   currentGalleryConcernFilter = 'all';
   if (gallerySearchInput) {
     gallerySearchInput.value = "";
-    gallerySearchInput.placeholder = "나비 이름을 검색해보세요";
+    gallerySearchInput.placeholder = "이곳에 작성하기";
   }
   var client = getSupabaseClient();
   if (client) {
