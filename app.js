@@ -208,6 +208,9 @@ function showScreen(screenId) {
   if (screenId !== 'screen-preview' && typeof stopFullButterflyViewer === 'function') {
     stopFullButterflyViewer();
   }
+  if (screenId !== 'screen-gallery' && typeof closeSpecimenDetailModal === 'function') {
+    closeSpecimenDetailModal();
+  }
 
   var target = document.getElementById(screenId);
   if (target) {
@@ -1445,6 +1448,7 @@ var btnCoreConcernNext = document.getElementById('btn-core-concern-next');
 var btnCoreConcernPrev = document.getElementById('btn-core-concern-prev');
 
 var coreConcernIsMouseDown = false;
+var coreConcernHasDragged = false;
 var coreConcernStartXCoord = 0;
 var coreConcernScrollLeftVal = 0;
 
@@ -1461,6 +1465,7 @@ function initCoreConcernScreen() {
     activeCoreConcernSkipCleanUp = null;
   }
   coreConcernIsMouseDown = false;
+  coreConcernHasDragged = false;
   if (elCoreConcernTitleWrap) elCoreConcernTitleWrap.classList.remove('moved-to-top');
   if (elCoreConcernTitle) elCoreConcernTitle.innerHTML = "";
   if (elCoreConcernSubGuide) elCoreConcernSubGuide.style.opacity = '0';
@@ -1495,7 +1500,16 @@ function initCoreConcernScreen() {
         var isSelected = (userSelections.core_concern === item);
         updateChipStyle(btn, isSelected);
 
-        btn.onclick = function() {
+        btn.onclick = function(e) {
+          // 🌟 PC 마우스 좌우 드래그 스크롤 도중 마우스를 뗐을 때 알약이 잘못 클릭되는 버그 방지
+          if (coreConcernHasDragged) {
+            coreConcernHasDragged = false;
+            if (e) {
+              e.preventDefault();
+              e.stopPropagation();
+            }
+            return;
+          }
           userSelections.core_concern = item;
           elCoreConcernGrid.querySelectorAll('.chip-base').forEach(function(b) {
             updateChipStyle(b, false);
@@ -1520,6 +1534,7 @@ function initCoreConcernScreen() {
 
     elCoreConcernContainer.onmousedown = function(e) {
       coreConcernIsMouseDown = true;
+      coreConcernHasDragged = false;
       coreConcernStartXCoord = e.pageX - elCoreConcernContainer.offsetLeft;
       coreConcernScrollLeftVal = elCoreConcernContainer.scrollLeft;
     };
@@ -1527,8 +1542,12 @@ function initCoreConcernScreen() {
     elCoreConcernContainer.onmouseup = function() { coreConcernIsMouseDown = false; };
     elCoreConcernContainer.onmousemove = function(e) {
       if (!coreConcernIsMouseDown) return;
+      var moveDelta = (e.pageX - elCoreConcernContainer.offsetLeft) - coreConcernStartXCoord;
+      if (Math.abs(moveDelta) > 5) {
+        coreConcernHasDragged = true;
+      }
       e.preventDefault();
-      elCoreConcernContainer.scrollLeft = coreConcernScrollLeftVal - ((e.pageX - elCoreConcernContainer.offsetLeft) - coreConcernStartXCoord) * 1.5;
+      elCoreConcernContainer.scrollLeft = coreConcernScrollLeftVal - moveDelta * 1.5;
     };
   }
 
@@ -1761,6 +1780,10 @@ var specimenButterfliesData = [];
 var specimenContainer = document.getElementById('specimen-items-container');
 var gallerySpawnTimers = [];
 var currentGalleryConcernFilter = 'all';
+var currentFilteredGalleryList = [];
+var currentRenderedGalleryCount = 0;
+var GALLERY_RENDER_CHUNK_SIZE = 30;
+var isOpeningSpecimenModalLock = false;
 
 // 🌟 [렉 제거 핵심]: 실시간 SVG <feGaussianBlur> 필터 및 <mask> 연산을 대체하기 위해, 각 나비의 블러 몸통 이미지를 1회만 구워서 재사용하는 캐시
 var specimenBlurredBodyTexCache = {};
@@ -1884,29 +1907,21 @@ function renderGalleryFilterChips() {
   });
 }
 
-function renderFilteredGallery(searchQuery) {
+// 🌟 대량 나비 데이터 렌더링 시 브라우저 멈춤 없이 스크롤에 따라 끝까지 부드럽게 추가 렌더링하는 헬퍼
+function appendNextGalleryChunk() {
   if (!specimenContainer) return;
-  specimenContainer.innerHTML = '';
-  gallerySpawnTimers.forEach(function(t) { clearTimeout(t); });
-  gallerySpawnTimers = [];
+  if (currentRenderedGalleryCount >= currentFilteredGalleryList.length) return;
 
-  var q = (searchQuery || "").trim().toLowerCase();
-  var filteredData = specimenButterfliesData.filter(function(item) {
-    var matchSearch = !q || (item.name || "").toLowerCase().indexOf(q) > -1;
-    var matchConcern = (currentGalleryConcernFilter === 'all') || ((item.core_concern || "").trim() === currentGalleryConcernFilter);
-    return matchSearch && matchConcern;
-  });
-
-  if (filteredData.length === 0) {
-    specimenContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 4rem 1rem; color: #777777; font-size: 13px;">' +
-      ((q || currentGalleryConcernFilter !== 'all') ? '조건에 맞는 나비가 없습니다.' : '아직 날려보낸 나비가 없습니다.<br>첫 번째 나비를 깨워보세요.') + '</div>';
-    return;
-  }
+  var startIdx = currentRenderedGalleryCount;
+  var endIdx = Math.min(startIdx + GALLERY_RENDER_CHUNK_SIZE, currentFilteredGalleryList.length);
+  var chunk = currentFilteredGalleryList.slice(startIdx, endIdx);
+  currentRenderedGalleryCount = endIdx;
 
   var fragment = document.createDocumentFragment();
   var cardElements = [];
 
-  filteredData.forEach(function(item, itemIdx) {
+  chunk.forEach(function(item, localIdx) {
+    var itemIdx = startIdx + localIdx;
     var parsedAnt = String(item.antId || 'ball').split('__');
     var cleanAntId = parsedAnt[0] || 'ball';
     var itemBodyColor = item.bodyColor || parsedAnt[1] || 'white';
@@ -1925,9 +1940,9 @@ function renderFilteredGallery(searchQuery) {
     var safeRawName = escapeHtmlSafe(rawName);
     var safeDisplayName = escapeHtmlSafe(displayName);
 
-    var clipId = 'specimen-wing-clip-' + item.id;
-    var bodyClipId = 'specimen-body-clip-' + item.id;
-    var bodyImgDomId = 'specimen-body-img-' + item.id;
+    var uniqueDomSuffix = item.id + '-' + itemIdx + '-' + Math.floor(Math.random() * 10000);
+    var clipId = 'specimen-wing-clip-' + uniqueDomSuffix;
+    var bodyClipId = 'specimen-body-clip-' + uniqueDomSuffix;
     var wingPath = wing.wingD || wing.d;
     var bodyPath = wing.bodyD || "";
 
@@ -1957,15 +1972,8 @@ function renderFilteredGallery(searchQuery) {
         (ant ? '<g transform="translate(' + wing.headX + ',' + wing.headY + ')" color="#e4e4e7">' + ant.render(10.5) + '</g>' : '') +
         '<g clip-path="url(#' + bodyClipId + ')">' +
           '<rect x="0" y="0" width="' + wing.w + '" height="' + wing.h + '" fill="#d4d4d8"/>' +
-          '<image id="' + bodyImgDomId + '" href="' + cachedBlurTex + '" x="0" y="0" width="' + wing.w + '" height="' + wing.h + '" preserveAspectRatio="none"/>' +
+          '<image class="specimen-blur-body-img" href="' + cachedBlurTex + '" x="0" y="0" width="' + wing.w + '" height="' + wing.h + '" preserveAspectRatio="none"/>' +
         '</g>';
-
-      if (!specimenBlurredBodyTexCache[item.id]) {
-        prepareSpecimenBlurredBodyTex(item.id, tex, function(blurredDataUrl) {
-          var imgEl = document.getElementById(bodyImgDomId);
-          if (imgEl) imgEl.setAttribute('href', blurredDataUrl);
-        });
-      }
     } else {
       bodyAndAntElementSvg =
         (bodyPath ? '<path d="' + bodyPath + '" fill="#ffffff"/>' : '') +
@@ -1995,8 +2003,21 @@ function renderFilteredGallery(searchQuery) {
       '</svg></div>' +
       '<div class="specimen-pill-label"><span class="label-text" title="' + safeRawName + '">' + safeDisplayName + '</span></div>';
 
+    // 🌟 검색/필터 변경으로 순서가 바뀌어도 해당 카드 내부의 블러 몸통 이미지를 직접 찾아 100% 정확히 반영
+    if (itemBodyColor === 'blur' && !specimenBlurredBodyTexCache[item.id]) {
+      var bodyImgEl = card.querySelector('.specimen-blur-body-img');
+      prepareSpecimenBlurredBodyTex(item.id, tex, function(blurredDataUrl) {
+        if (bodyImgEl) bodyImgEl.setAttribute('href', blurredDataUrl);
+      });
+    }
+
     card.onclick = function(e) {
       e.stopPropagation();
+      // 🌟 빠른 연속 터치(더블클릭)로 3D 렌더러가 중복 생성되는 현상 방지
+      if (isOpeningSpecimenModalLock) return;
+      isOpeningSpecimenModalLock = true;
+      setTimeout(function() { isOpeningSpecimenModalLock = false; }, 350);
+
       if (specimenContainer) specimenContainer.querySelectorAll('.specimen-pill-label').forEach(function(l) { l.classList.remove('active-touched'); });
       var curLbl = card.querySelector('.specimen-pill-label');
       if (curLbl) curLbl.classList.add('active-touched');
@@ -2011,12 +2032,49 @@ function renderFilteredGallery(searchQuery) {
   specimenContainer.appendChild(fragment);
 
   cardElements.forEach(function(cardEl, idx) {
-    var timer = setTimeout(function() { if (cardEl) cardEl.classList.add('revealed'); }, Math.min(idx * 40, 480));
+    var timer = setTimeout(function() { if (cardEl) cardEl.classList.add('revealed'); }, Math.min(idx * 35, 350));
     gallerySpawnTimers.push(timer);
+  });
+
+  // 🌟 큰 화면이나 축소된 뷰포트에서 스크롤바가 생기지 않아도 남은 나비가 있으면 자동으로 이어서 채움
+  requestAnimationFrame(function() {
+    var viewport = document.getElementById('gallery-pan-viewport');
+    if (viewport && currentRenderedGalleryCount < currentFilteredGalleryList.length) {
+      if (viewport.scrollHeight <= viewport.clientHeight + 200) {
+        appendNextGalleryChunk();
+      }
+    }
   });
 }
 
-// 🌟 스크롤 속도에 반응하여 나비들이 미세하게 흔들리는 초경량 바람(Scroll Tilt) 효과 (requestAnimationFrame 쓰로틀링 적용으로 스크롤 렉 방지)
+function renderFilteredGallery(searchQuery) {
+  if (!specimenContainer) return;
+  specimenContainer.innerHTML = '';
+  gallerySpawnTimers.forEach(function(t) { clearTimeout(t); });
+  gallerySpawnTimers = [];
+
+  var viewport = document.getElementById('gallery-pan-viewport');
+  if (viewport) viewport.scrollTop = 0;
+
+  var q = (searchQuery || "").trim().toLowerCase();
+  currentFilteredGalleryList = specimenButterfliesData.filter(function(item) {
+    var matchSearch = !q || (item.name || "").toLowerCase().indexOf(q) > -1;
+    var matchConcern = (currentGalleryConcernFilter === 'all') || ((item.core_concern || "").trim() === currentGalleryConcernFilter);
+    return matchSearch && matchConcern;
+  });
+
+  currentRenderedGalleryCount = 0;
+
+  if (currentFilteredGalleryList.length === 0) {
+    specimenContainer.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 4rem 1rem; color: #777777; font-size: 13px;">' +
+      ((q || currentGalleryConcernFilter !== 'all') ? '조건에 맞는 나비가 없습니다.' : '아직 날려보낸 나비가 없습니다.<br>첫 번째 나비를 깨워보세요.') + '</div>';
+    return;
+  }
+
+  appendNextGalleryChunk();
+}
+
+// 🌟 스크롤 속도에 반응하여 나비들이 미세하게 흔들리는 초경량 바람(Scroll Tilt) 효과 + 스크롤 하단 도달 시 나머지 나비 연속 렌더링
 var galleryScrollResetTimer = null;
 var galleryScrollRafId = null;
 function bindGalleryScrollWindEffect() {
@@ -2040,6 +2098,13 @@ function bindGalleryScrollWindEffect() {
       board.style.setProperty('--scroll-tilt', tiltDeg.toFixed(1) + 'deg');
       board.style.setProperty('--scroll-shift', shiftPx.toFixed(1) + 'px');
 
+      // 🌟 스크롤이 하단 여유 구간(650px 이내)에 도달하면 다음 나비 묶음을 즉시 이어서 렌더링하여 제한 없이 모든 나비 표시
+      if (currentRenderedGalleryCount < currentFilteredGalleryList.length) {
+        if (curTop + viewport.clientHeight >= viewport.scrollHeight - 650) {
+          appendNextGalleryChunk();
+        }
+      }
+
       clearTimeout(galleryScrollResetTimer);
       galleryScrollResetTimer = setTimeout(function() {
         board.style.setProperty('--scroll-tilt', '0deg');
@@ -2062,12 +2127,53 @@ async function initSpecimenGallery() {
     gallerySearchInput.value = "";
     gallerySearchInput.placeholder = "이곳에 작성하기";
   }
+
+  // 🌟 방금 만든 나비가 아직 DB에 저장 중이라면 완료될 때까지 최대 1.5초 대기하여 임시 ID와 DB ID 중복 현상 원천 차단
+  if (currentSavePromise) {
+    try {
+      await Promise.race([
+        currentSavePromise,
+        new Promise(function(resolve) { setTimeout(resolve, 1500); })
+      ]);
+    } catch (e) {}
+  }
+
+  // 🌟 혹시 오프라인이거나 DB 저장이 안 된 로컬 나비가 있다면 보관
+  var unsavedLocalItems = specimenButterfliesData.filter(function(item) {
+    return typeof item.id === 'number' && item.id > 1000000000000;
+  });
+
   var client = getSupabaseClient();
   if (client) {
     try {
-      var res = await client.from('butterflies').select('*').order('id', { ascending: false }).limit(24);
-      if (res.data && res.data.length > 0) {
-        specimenButterfliesData = res.data.map(function(item) {
+      // 🌟 개수 제한(limit) 없이 사용자가 만든 모든 나비를 끝까지 전부 조회
+      var allRows = [];
+      var pageSize = 1000;
+      var from = 0;
+
+      while (true) {
+        var res = await client
+          .from('butterflies')
+          .select('*')
+          .order('id', { ascending: false })
+          .range(from, from + pageSize - 1);
+
+        if (res.error) {
+          console.error("Supabase 데이터 조회 오류:", res.error);
+          break;
+        }
+        if (!res.data || res.data.length === 0) {
+          break;
+        }
+        allRows = allRows.concat(res.data);
+        if (res.data.length < pageSize) {
+          break;
+        }
+        from += pageSize;
+      }
+
+      if (allRows.length > 0) {
+        var dbMappedList = allRows.map(function(item) {
           var rawAntStr = String(item.antenna_type || "ball");
           var antParts = rawAntStr.split('__');
           return {
@@ -2084,14 +2190,30 @@ async function initSpecimenGallery() {
             date: item.created_at ? new Date(item.created_at).toISOString().slice(0, 10).replace(/-/g, '. ') : "2026. 10. 24"
           };
         });
+
+        var dbIdSet = {};
+        dbMappedList.forEach(function(dItem) {
+          dbIdSet[String(dItem.id)] = true;
+        });
+        var remainingLocal = unsavedLocalItems.filter(function(lItem) {
+          return !dbIdSet[String(lItem.id)];
+        });
+
+        specimenButterfliesData = remainingLocal.concat(dbMappedList);
       }
     } catch (err) { console.error("Supabase 데이터 조회 오류:", err); }
   }
+
+  // 🌟 비동기 로딩 도중 사용자가 갤러리를 나갔다면 불필요한 렌더링 중단
+  var activeScreen = document.querySelector('.screen.active');
+  if (!activeScreen || activeScreen.id !== 'screen-gallery') return;
+
   renderGalleryFilterChips();
   renderFilteredGallery("");
 }
 
 function closeSpecimenDetailModal() {
+  isOpeningSpecimenModalLock = false;
   var modal = document.getElementById('specimen-detail-modal');
   if (modal) modal.classList.add('hidden');
   if (typeof stopModal3DScene === 'function') {
